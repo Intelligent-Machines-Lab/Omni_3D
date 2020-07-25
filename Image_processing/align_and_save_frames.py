@@ -31,6 +31,9 @@ config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 # Start streaming
 profile = pipeline.start(config)
 
+
+
+
 # Getting the depth sensor's depth scale (see rs-align example for explanation)
 depth_sensor = profile.get_device().first_depth_sensor()
 depth_scale = depth_sensor.get_depth_scale()
@@ -65,16 +68,42 @@ try:
         if not aligned_depth_frame or not color_frame:
             continue
 
-        depth_image = np.asanyarray(aligned_depth_frame.get_data())
+
+        #filter definition
+        #dec_filter = rs.decimation_filter() # Decimation - reduces depth frame density
+        spat_filter = rs.spatial_filter() # Spatial - edge-preserving spatial smoothing
+        temp_filter = rs.temporal_filter() # Temporal - reduces temporal noise
+        #thresh_filter = rs.threshold_filter()
+        depth_to_disparity = rs.disparity_transform(True)
+        disparity_to_depth = rs.disparity_transform(False)
+
+        #Using Filtering
+        #frame = dec_filter.process(aligned_depth_frame)
+        #frame = thresh_filter.process(frame)
+        spat_filter.set_option(rs.option.filter_magnitude, 4)
+        temp_filter.set_option(rs.option.filter_smooth_alpha, 0.2)
+        temp_filter.set_option(rs.option.filter_smooth_delta, 50)
+        frame = depth_to_disparity.process(aligned_depth_frame)
+        frame = spat_filter.process(frame)
+        frame = temp_filter.process(frame)
+        frame = disparity_to_depth.process(frame)
+
+
+        depth_raw_image = np.asanyarray(aligned_depth_frame.get_data())
+        depth_image = np.asanyarray(frame.get_data())
         color_image = np.asanyarray(color_frame.get_data())
+
         key = cv2.waitKey(25)
         if key == ord("e"):
             ts = time.time()
-            filenameCor = 'samples_alinhadas/'+str(ts)+'_rgb.jpg'
-            filenameṔŕof = 'samples_alinhadas/'+str(ts)+'_depth.png'
+            filenameCor = 'samples_alinhadas_posprocessadas/'+str(ts)+'_rgb.jpg'
+            filenameṔŕof = 'samples_alinhadas_posprocessadas/'+str(ts)+'_depth.png'
+            filenameṔŕof_raw = 'samples_alinhadas_posprocessadas/'+str(ts)+'_depth_raw.png'
             cv2.imwrite(filenameCor, color_image) 
             im = pil.Image.fromarray(depth_image)
             im.save(filenameṔŕof, "PNG")
+            im = pil.Image.fromarray(depth_raw_image)
+            im.save(filenameṔŕof_raw, "PNG")
 
         # Remove background - Set pixels further than clipping_distance to grey
         grey_color = 153
