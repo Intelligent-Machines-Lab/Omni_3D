@@ -77,7 +77,7 @@ def display_inlier_outlier(cloud, ind):
 # o3d.visualization.draw_geometries([pcd])
 
 
-useGazebo = True
+useGazebo = False
 nImages = 5
 while(n < nImages):
 		n = n+1
@@ -106,8 +106,18 @@ while(n < nImages):
 		# o3d.visualization.draw_geometries([pcd])
 
 		## Downsample
-		# pcd = pcd.voxel_down_sample(voxel_size=0.1)
+		# pcd = pcd.voxel_down_sample(voxel_size=0.05)
 		# o3d.visualization.draw_geometries([pcd])
+
+		# Voxelization
+		voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.1)
+		ptmax = np.asarray(pcd.points).max(axis=0)
+		ptmin = np.asarray(pcd.points).min(axis=0)
+		eixo = [[0, 0, 0],[1, 0, 0],[0, 1, 0], [0, 0, 1]]
+		pts = np.array([ptmax, ptmin])
+		print(pts)
+		boundingGrid = o3d.geometry.OrientedBoundingBox.create_from_points(o3d.utility.Vector3dVector(eixo))
+		o3d.visualization.draw_geometries([voxel_grid, boundingGrid])
 
 		## Remove radius outlier
 		# cl, ind = pcd.remove_radius_outlier(nb_points=16, radius=0.05)
@@ -122,21 +132,21 @@ while(n < nImages):
 		# o3d.visualization.draw_geometries([pcd])
 
 		# Ransac total
-		outlier_cloud = pcd
-		inlier_cloud_list = []
-		planosMaximos = 3
+		# outlier_cloud = pcd
+		# inlier_cloud_list = []
+		# planosMaximos = 3
 
-		for x in range(planosMaximos):
-			# Ransac planar
-			plane_model, inliers = outlier_cloud.segment_plane(distance_threshold=0.1,ransac_n=3,num_iterations=1000)
-			[a, b, c, d] = plane_model
-			print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
-			inlier_cloud_list.append(outlier_cloud.select_by_index(inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
-			outlier_cloud = outlier_cloud.select_by_index(inliers, invert=True)
-			o3d.visualization.draw_geometries(inlier_cloud_list)
+		# for x in range(planosMaximos):
+		# 	# Ransac planar
+		# 	plane_model, inliers = outlier_cloud.segment_plane(distance_threshold=0.1,ransac_n=3,num_iterations=1000)
+		# 	[a, b, c, d] = plane_model
+		# 	print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
+		# 	inlier_cloud_list.append(outlier_cloud.select_by_index(inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
+		# 	outlier_cloud = outlier_cloud.select_by_index(inliers, invert=True)
+		# 	o3d.visualization.draw_geometries(inlier_cloud_list)
 
-		inlier_cloud_list.append(outlier_cloud)
-		o3d.visualization.draw_geometries(inlier_cloud_list)
+		# inlier_cloud_list.append(outlier_cloud)
+		# o3d.visualization.draw_geometries(inlier_cloud_list)
 
 
 
