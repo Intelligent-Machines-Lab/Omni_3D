@@ -69,11 +69,6 @@ def display_inlier_outlier(cloud, ind):
 
 
 
-
-
-
-
-
 # color_raw = o3d.io.read_image("images_alinhadas/teste2_rgb.jpg")
 # depth_raw = o3d.io.read_image("images_alinhadas/teste2_depth_raw.png")
 # depth_pos = o3d.io.read_image("images_alinhadas/teste2_depth.png")
@@ -82,8 +77,8 @@ def display_inlier_outlier(cloud, ind):
 # pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_pos, meters_trunc=5, showImages=False)
 # o3d.visualization.draw_geometries([pcd])
 
-list_depth = ["selecionadas_wall_box/1_depth.png"]
-list_rgb = ["selecionadas_wall_box/1_rgb.jpg"]
+list_depth = ["selecionadas_wall_box/6_depth.png"]
+list_rgb = ["selecionadas_wall_box/6_rgb.jpg"]
 
 showNormals = True
 
@@ -98,24 +93,7 @@ for i in range(len(list_rgb)):
 	pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=3, showImages = True)
 	o3d.visualization.draw_geometries([pcd])
 
-	# downpcd = pcd.voxel_down_sample(voxel_size=0.05)
-	# downpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.2, max_nn=30))
-	# downpcd.orient_normals_towards_camera_location()
-	# downpcd.normalize_normals()
-	# o3d.visualization.draw_geometries([downpcd], point_show_normal=True)
 
-	# print("Print the normal vectors of the first 10 points")
-	# normais = np.asarray(downpcd.normals)
-	# cor = np.asarray(downpcd.colors)
-	# print(normais.shape)
-	# print(cor.shape)
-
-	# for i in range(normais.shape[0]):
-	# 	#print(normais[i,:])
-	# 	cor[i, :] = (np.abs(normais[i,0]),np.abs(normais[i,1]),np.abs(normais[i,2]))
-
-	# downpcd.colors = o3d.utility.Vector3dVector(cor)
-	# o3d.visualization.draw_geometries([downpcd])
 
 	#Ransac total
 	outlier_cloud = pcd
@@ -127,79 +105,23 @@ for i in range(len(list_rgb)):
 		# Ransac planar
 		plane_model, inliers = outlier_cloud.segment_plane(distance_threshold=0.05,ransac_n=3,num_iterations=1000)
 		qtn_inliers = np.asarray(inliers).shape[0]
-		if(qtn_inliers < 40000):
+		if(qtn_inliers < 4000):
 			break
 		[a, b, c, d] = plane_model
 		print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
 		inlier_cloud_list.append(outlier_cloud.select_by_index(inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
-		outlier_cloud = outlier_cloud.select_by_index(inliers, invert=True)
 		o3d.visualization.draw_geometries(inlier_cloud_list)
+
+		outlier_cloud = outlier_cloud.select_by_index(inliers, invert=True)
+		cl, ind = outlier_cloud.remove_radius_outlier(nb_points=500, radius=0.1)
+		display_inlier_outlier(outlier_cloud, ind)
+		outlier_cloud = outlier_cloud.select_by_index(ind)
+
+		
+
+
 
 	inlier_cloud_list.append(outlier_cloud)
 	o3d.visualization.draw_geometries([inlier_cloud_list[-1]])
 
 	not_planes = inlier_cloud_list[-1]
-
-
-	## Remove radius outlier
-	cl, ind = not_planes.remove_radius_outlier(nb_points=500, radius=0.1)
-	filtered_not_planes = not_planes.select_by_index(ind)
-	display_inlier_outlier(not_planes, ind)
-	o3d.visualization.draw_geometries([filtered_not_planes])
-
-	# Statistical oulier removal
-	# cl, ind = not_planes.remove_statistical_outlier(nb_neighbors=1000, std_ratio=2)
-	# #display_inlier_outlier(pcd, ind)
-	# filtered_not_planes = not_planes.select_by_index(ind)
-	# o3d.visualization.draw_geometries([filtered_not_planes])
-
-
-
-	with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
-		labels = np.array(filtered_not_planes.cluster_dbscan(eps=0.07, min_points=200, print_progress=False))
-
-	max_label = labels.max()
-	print(f"point cloud has {max_label + 1} clusters")
-	colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
-	colors[labels < 0] = 0
-	filtered_not_planes.colors = o3d.utility.Vector3dVector(colors[:, :3])
-	o3d.visualization.draw_geometries([filtered_not_planes])
-	cluster_array = []
-	for n_cluster in range(max_label+1):
-		index_from_cluster = np.where(labels == n_cluster)[0]
-
-		cluster = filtered_not_planes.select_by_index( index_from_cluster.tolist())
-		cluster_qnt_points = np.asarray(cluster.points).shape[0]
-		if(cluster_qnt_points > 4000):
-			if(showNormals):
-				downpcd = cluster.voxel_down_sample(voxel_size=0.05)
-				downpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.2, max_nn=30))
-				downpcd.orient_normals_towards_camera_location()
-				downpcd.normalize_normals()
-				o3d.visualization.draw_geometries([downpcd], point_show_normal=True)
-
-				normais = np.asarray(downpcd.normals)
-				cor = np.asarray(downpcd.colors)
-
-				print(cor.shape)
-
-				for i in range(normais.shape[0]):
-					#print(normais[i,:])
-					cor[i, :] = (np.abs(normais[i,0]),np.abs(normais[i,1]),np.abs(normais[i,2]))
-
-				downpcd.colors = o3d.utility.Vector3dVector(cor)
-				o3d.visualization.draw_geometries([downpcd])
-
-
-			cluster_array.append(cluster)
-			obb = cluster.get_axis_aligned_bounding_box()
-			obb.color = (random.uniform(0, 1),random.uniform(0, 1),random.uniform(0, 1))
-			cluster_array.append(obb)
-	
-	all_objects = inlier_cloud_list[0:-1]
-	all_objects.extend(cluster_array)
-	print(all_objects)
-	o3d.visualization.draw_geometries(all_objects)
-
-
-
