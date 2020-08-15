@@ -82,13 +82,13 @@ def display_inlier_outlier(cloud, ind):
 # pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_pos, meters_trunc=5, showImages=False)
 # o3d.visualization.draw_geometries([pcd])
 
-list_depth = ["selecionadas_wall_box/1_depth.png"]
-list_rgb = ["selecionadas_wall_box/1_rgb.jpg"]
+#list_depth = ["selecionadas_wall_box/1_depth.png"]
+#list_rgb = ["selecionadas_wall_box/1_rgb.jpg"]
 
 showNormals = True
 
-#list_depth = sorted(glob.glob("selecionadas_wall_box/*_depth.png"))
-#list_rgb = sorted(glob.glob("selecionadas_wall_box/*.jpg"))
+list_depth = sorted(glob.glob("selecionadas_wall_box/*_depth.png"))
+list_rgb = sorted(glob.glob("selecionadas_wall_box/*.jpg"))
 
 transformationList = [] # Should be n-1 images
 
@@ -173,10 +173,26 @@ for i in range(len(list_rgb)):
 		if(cluster_qnt_points > 4000):
 			if(showNormals):
 				downpcd = cluster.voxel_down_sample(voxel_size=0.05)
-				downpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.2, max_nn=30))
+				downpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.2, max_nn=500))
 				downpcd.orient_normals_towards_camera_location()
 				downpcd.normalize_normals()
-				o3d.visualization.draw_geometries([downpcd], point_show_normal=True)
+				# media, cov =  downpcd.compute_mean_and_covariance()
+				# media = np.asarray(media)
+				# print("Media: "+str(media))
+				# print("Matriz de covariância: "+str(cov))
+				# w, v  = np.linalg.eig(cov)
+				# print("Autovetores: "+str(v))
+				# print("Autovalores: "+str(w))
+				# rotMatrix = np.asarray([[w[0], 0, 0], [0, w[1], 0], [0, 0, w[2]]])
+
+				# print("rotmatrix: "+str(rotMatrix))
+
+
+				# coordenadas1 = o3d.geometry.TriangleMesh.create_coordinate_frame(origin=-media)
+				# coordenadas2 = copy.deepcopy(coordenadas1).rotate(rotMatrix, center=media)
+
+
+				# o3d.visualization.draw_geometries([downpcd, coordenadas2], point_show_normal=True)
 
 				normais = np.asarray(downpcd.normals)
 				cor = np.asarray(downpcd.colors)
@@ -192,7 +208,8 @@ for i in range(len(list_rgb)):
 
 
 			cluster_array.append(cluster)
-			obb = cluster.get_axis_aligned_bounding_box()
+			#obb = cluster.get_axis_aligned_bounding_box()
+			obb = cluster.get_oriented_bounding_box()
 			obb.color = (random.uniform(0, 1),random.uniform(0, 1),random.uniform(0, 1))
 			cluster_array.append(obb)
 	

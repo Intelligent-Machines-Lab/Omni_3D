@@ -122,6 +122,8 @@ for i in range(len(list_rgb)):
 	inlier_cloud_list = []
 	planosMaximos = 3
 	qtn_inliers = 99999999
+	t_matrix = []
+	r_matrix = []
 
 	while(True):
 		# Ransac planar
@@ -131,11 +133,28 @@ for i in range(len(list_rgb)):
 			break
 		[a, b, c, d] = plane_model
 		print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
+		# https://math.stackexchange.com/questions/1167717/transform-a-plane-to-the-xy-plane?newreg=a9c8625f333a4932a74efb05194f8b18
+		c_theta = c/(np.sqrt(a*a+b*b+c*c))
+		s_theta = np.sqrt((a*a+b*b)/(a*a+b*b+c*c))
+		u1 = b/(np.sqrt(a*a+b*b+c*c))
+		u2 = - a/(np.sqrt(a*a+b*b+c*c))
+		t_matrix = np.asarray([0, 0, -d/c])
+		r_matrix = np.asarray([[c_theta+u1*u1*(1-c_theta), u1*u2*(1-c_theta), u2*s_theta],
+								[u1*u2*(1-c_theta), c_theta+u2*u2*(1-c_theta), -u1*s_theta],
+								[-u2*s_theta, u1*s_theta, c_theta]])
+
+		print(t_matrix)
+		print(r_matrix)
 		inlier_cloud_list.append(outlier_cloud.select_by_index(inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
 		outlier_cloud = outlier_cloud.select_by_index(inliers, invert=True)
 		o3d.visualization.draw_geometries(inlier_cloud_list)
+		break
 
 	inlier_cloud_list.append(outlier_cloud)
-	o3d.visualization.draw_geometries([inlier_cloud_list[-1]])
+	mesh = o3d.geometry.TriangleMesh.create_coordinate_frame()
+	pcd_rotacionado = copy.deepcopy(pcd).rotate(r_matrix, center=(0,0,0)).paint_uniform_color([0, 0, 1])
+	o3d.visualization.draw_geometries([pcd, mesh, pcd_rotacionado])
 
 	not_planes = inlier_cloud_list[-1]
+
+
