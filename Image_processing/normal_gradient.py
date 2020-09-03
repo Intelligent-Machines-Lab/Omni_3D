@@ -82,13 +82,13 @@ def display_inlier_outlier(cloud, ind):
 # pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_pos, meters_trunc=5, showImages=False)
 # o3d.visualization.draw_geometries([pcd])
 
-#list_depth = ["selecionadas_wall_box/1_depth.png"]
-#list_rgb = ["selecionadas_wall_box/1_rgb.jpg"]
+list_depth = ["selecionadas_wall_box/1_depth.png"]
+list_rgb = ["selecionadas_wall_box/1_rgb.jpg"]
 
 showNormals = True
 
-list_depth = sorted(glob.glob("selecionadas_wall_box/*_depth.png"))
-list_rgb = sorted(glob.glob("selecionadas_wall_box/*.jpg"))
+#list_depth = sorted(glob.glob("selecionadas_wall_box/*_depth.png"))
+#list_rgb = sorted(glob.glob("selecionadas_wall_box/*.jpg"))
 
 transformationList = [] # Should be n-1 images
 
@@ -162,7 +162,7 @@ for i in range(len(list_rgb)):
 	print(f"point cloud has {max_label + 1} clusters")
 	colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
 	colors[labels < 0] = 0
-	#filtered_not_planes.colors = o3d.utility.Vector3dVector(colors[:, :3])
+	filtered_not_planes.colors = o3d.utility.Vector3dVector(colors[:, :3])
 	o3d.visualization.draw_geometries([filtered_not_planes])
 	cluster_array = []
 	for n_cluster in range(max_label+1):
@@ -170,51 +170,46 @@ for i in range(len(list_rgb)):
 
 		cluster = filtered_not_planes.select_by_index( index_from_cluster.tolist())
 		cluster_qnt_points = np.asarray(cluster.points).shape[0]
-		if(cluster_qnt_points > 4000):
+		if(cluster_qnt_points > 1500):
 			if(showNormals):
-				o3d.io.write_point_cloud("caixa6.ply", cluster)
-				downpcd = cluster.voxel_down_sample(voxel_size=0.05)
+				downpcd = cluster#.voxel_down_sample(voxel_size=0.05)
 				downpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.2, max_nn=500))
 				downpcd.orient_normals_towards_camera_location()
 				downpcd.normalize_normals()
-				# media, cov =  downpcd.compute_mean_and_covariance()
-				# media = np.asarray(media)
-				# print("Media: "+str(media))
-				# print("Matriz de covariância: "+str(cov))
-				# w, v  = np.linalg.eig(cov)
-				# print("Autovetores: "+str(v))
-				# print("Autovalores: "+str(w))
-				# rotMatrix = np.asarray([[w[0], 0, 0], [0, w[1], 0], [0, 0, w[2]]])
-
-				# print("rotmatrix: "+str(rotMatrix))
 
 
-				# coordenadas1 = o3d.geometry.TriangleMesh.create_coordinate_frame(origin=-media)
-				# coordenadas2 = copy.deepcopy(coordenadas1).rotate(rotMatrix, center=media)
 
-
-				# o3d.visualization.draw_geometries([downpcd, coordenadas2], point_show_normal=True)
 
 				normais = np.asarray(downpcd.normals)
 				cor = np.asarray(downpcd.colors)
+				downpcd_tree = o3d.geometry.KDTreeFlann(downpcd)
 
 				print(cor.shape)
+				normal_diff = []
 
 				for i in range(normais.shape[0]):
 					#print(normais[i,:])
 					cor[i, :] = (np.abs(normais[i,0]),np.abs(normais[i,1]),np.abs(normais[i,2]))
 
+					
+					[k, idx, _] = downpcd_tree.search_radius_vector_3d(downpcd.points[i], 0.05)
+					normal_diff.append(np.sum(np.abs(normais[i, :] - normais[idx[1:], :])))
+					#print(normal_diff[-1])
+						
+				normal_diff_max = np.max(normal_diff)
+				print("max: " + str(normal_diff_max))
+				normal_diff_normalized = normal_diff/normal_diff_max
+				for i in range(normais.shape[0]):
+					cor[i, :] = (normal_diff_normalized[i],0,0)
 				downpcd.colors = o3d.utility.Vector3dVector(cor)
 				o3d.visualization.draw_geometries([downpcd])
 
 
 			cluster_array.append(cluster)
-			obb = cluster.get_axis_aligned_bounding_box()
-			obb2 = cluster.get_oriented_bounding_box()
-			obb.color = (1,0,0)
-			obb2.color = (0,1,0)
+			#obb = cluster.get_axis_aligned_bounding_box()
+			obb = cluster.get_oriented_bounding_box()
+			obb.color = (random.uniform(0, 1),random.uniform(0, 1),random.uniform(0, 1))
 			cluster_array.append(obb)
-			cluster_array.append(obb2)
 	
 	all_objects = inlier_cloud_list[0:-1]
 	all_objects.extend(cluster_array)
