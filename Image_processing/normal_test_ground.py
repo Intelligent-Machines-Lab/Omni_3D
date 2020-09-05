@@ -16,26 +16,28 @@ n = 0
 
 showNormals = True
 
-list_depth = sorted(glob.glob("selecionadas_wall_box/*_depth.png"))
-list_rgb = sorted(glob.glob("selecionadas_wall_box/*.jpg"))
+list_depth = sorted(glob.glob("selecionadas_wall_cylinder/*_depth.png"))
+list_rgb = sorted(glob.glob("selecionadas_wall_cylinder/*.jpg"))
 
 transformationList = [] # Should be n-1 images
 
 for i in range(len(list_rgb)):
 	color_raw = o3d.io.read_image(list_rgb[i])
 	depth_raw = o3d.io.read_image(list_depth[i])
-	pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=3, showImages = True)
-	o3d.visualization.draw_geometries([pcd])
+	pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=3, showImages = False)
+	#o3d.visualization.draw_geometries([pcd])
 
 	ls = LocalScene(pcd)
 
 	#Ransac total
 	ls.findMainPlanes()
 	ls.defineGroundNormal()
-	ls.showMainPlanes()
-	ls.showNotPlanes()
+	o3d.visualization.draw_geometries(ls.getMainPlanes())
+	#ls.showNotPlanes()
 	ls.clusterizeObjects()
-	ls.showObjects()
+	#ls.showObjects()
+	ls.fitCylinder()
+	ls.showFeatures()
 
 
 	
