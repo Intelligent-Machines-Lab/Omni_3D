@@ -20,20 +20,59 @@ class LocalScene:
         self.groundNormal = [] # Vector normal to the ground
         self.groundID = 0
 
+    def custom_draw_geometry(self):
+        # The following code achieves the same effect as:
+        # o3d.visualization.draw_geometries([pcd])
+        vis_original = o3d.visualization.Visualizer()
+
+        vis_original.create_window(window_name='Original', width=960, height=540, left=0, top=0)
+        vis_original.add_geometry(self.pointCloud)
+
+        feat = self.getMainPlanes()
+        feat.extend(self.getCylinders(showPointCloud=False))
+        vis_feature = o3d.visualization.Visualizer()
+        vis_feature.create_window(window_name='Feature', width=960, height=540, left=960, top=0)
+        for x in range(len(feat)):
+            vis_feature.add_geometry(feat[x])
+
+        while True:
+            vis_original.update_geometry(self.pointCloud)
+            if not vis_original.poll_events():
+                break
+            vis_original.update_renderer()
+
+            feat = self.getMainPlanes()
+            feat.extend(self.getCylinders(showPointCloud=False))
+            for x in range(len(feat)):
+                vis_feature.update_geometry(feat[x])
+            
+            if not vis_feature.poll_events():
+                break
+            vis_feature.update_renderer()
+
+        vis_original.destroy_window()
+        vis_feature.destroy_window()
+
     def findMainPlanes(self):
         outlier_cloud = copy.deepcopy(self.pointCloud)
         inlier_cloud_list = []
         while(True):
             # Ransac planar
             points = np.asarray(outlier_cloud.points)
+            
             p = Plane()
             best_eq, best_inliers = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=1000)
             qtn_inliers = best_inliers.shape[0]
-            if(qtn_inliers < 20000):
+            if(qtn_inliers < 30000):
                 break
+            out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
+            points = np.asarray(out.points)
+            if(points.shape[0] < 1000):
+                 break
+            outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
+            p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
             self.mainPlanes.append(p)
 
-            outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
             cl, ind = outlier_cloud.remove_radius_outlier(nb_points=500, radius=0.12)
             #display_inlier_outlier(outlier_cloud, ind)
             outlier_cloud = outlier_cloud.select_by_index(ind)
@@ -47,7 +86,9 @@ class LocalScene:
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(self.mainPlanes[i].inliers)
             #print(self.mainPlanes[i].equation)
-            pointCloudList.append(pcd.paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
+            
+            pointCloudList.append(pcd.paint_uniform_color(self.mainPlanes[i].color))
+            
         if(self.groundNormal != []):
             mesh = o3d.geometry.TriangleMesh.create_coordinate_frame(origin=[0, 0, 0], size=0.5)
             pcd = o3d.geometry.PointCloud()
@@ -95,7 +136,7 @@ class LocalScene:
             index_from_cluster = np.where(labels == n_cluster)[0]
             cluster = filtered_not_planes.select_by_index( index_from_cluster.tolist())
             cluster_qnt_points = np.asarray(cluster.points).shape[0]
-            if(cluster_qnt_points > 2000):
+            if(cluster_qnt_points > 1000):
                 self.pointCloud_objects.append(cluster)
 
 
@@ -104,6 +145,7 @@ class LocalScene:
             cyl = Cylinder()
             points = np.asarray(self.pointCloud_objects[i_obj].points)
             cyl.find(points, thresh=0.05, maxIteration=1000, forceAxisVector = self.groundNormal, useRANSAC = False)
+            cyl.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
             self.mainCylinders.append(cyl)
 
     def getCylinders(self, maxRadius= 9999999, showPointCloud = True):
@@ -113,7 +155,7 @@ class LocalScene:
                 R = get_rotationMatrix_from_vectors([0, 0, 1], self.mainCylinders[i_obj].normal)
                 mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=self.mainCylinders[i_obj].radius, height=(self.mainCylinders[i_obj].height[1]-self.mainCylinders[i_obj].height[0]))
                 mesh_cylinder.compute_vertex_normals()
-                mesh_cylinder.paint_uniform_color([0.1, 0.9, 0.1])
+                mesh_cylinder.paint_uniform_color(self.mainCylinders[i_obj].color)
                 mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
                 mesh_cylinder = mesh_cylinder.translate((self.mainCylinders[i_obj].center[0], self.mainCylinders[i_obj].center[1], self.mainCylinders[i_obj].center[2]))
                 cymesh.append(mesh_cylinder)
@@ -131,3 +173,14 @@ class LocalScene:
         feat = self.getMainPlanes()
         feat.extend(self.getCylinders(showPointCloud=False))
         o3d.visualization.draw_geometries(feat)
+
+    def getProprieties(self):
+        vet_mainPlanes = []
+        for x in range(len(self.mainPlanes)):
+            vet_mainPlanes.append(self.mainPlanes[x].getProrieties())
+
+        vet_mainCylinders = []
+        for x in range(len(self.mainCylinders)):
+            vet_mainCylinders.append(self.mainCylinders[x].getProrieties())
+        
+        return {"groundNormal": self.groundNormal, "planes": vet_mainPlanes, "cylinders": vet_mainCylinders}

@@ -11,6 +11,7 @@ class Cylinder:
 		self.equation = []
 		self.tMatrix = [] # env to plane
 		self.rMatrix = [] # env to plane
+		self.color = []
 
 
 	def find(self, pts, thresh=0.2, minPoints=50, maxIteration=5000, useRANSAC = True, forceAxisVector = []):
@@ -118,3 +119,7 @@ class Cylinder:
 
 
 		return self.center, self.normal, self.radius,  self.inliers, self.height 
+
+
+	def getProrieties(self):
+		return {"center": self.center, "axis": self.normal,"radius": self.radius,"height": self.height, "color": self.color}

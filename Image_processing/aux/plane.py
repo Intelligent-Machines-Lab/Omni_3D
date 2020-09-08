@@ -10,6 +10,7 @@ class Plane:
 		self.inliers = []
 		self.inliersId = []
 		self.equation = []
+		self.color = []
 
 
 	def findPlane(self, pts, thresh=0.05, minPoints=100, maxIteration=1000):
@@ -62,6 +63,9 @@ class Plane:
 			self.inliersId = best_inliers
 			self.equation = best_eq
 		return best_eq, best_inliers
+
+	def getProrieties(self):
+		return {"equation": self.equation, "color": self.color}
 
 		
 
