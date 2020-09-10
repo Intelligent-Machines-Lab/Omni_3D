@@ -35,7 +35,7 @@ def showGUI(prop):
 	for key in prop: # key of proprety
 		if(isinstance(prop[key], list)): # if is a list
 			if((key == "planes") or (key =="cylinders")): # we need to load more if it is plane or cylinder
-				arv = tree.insert("", 1, text=key) # add major tree primitive division
+				arv = tree.insert("", 1, text=key, open=True) # add major tree primitive division
 				for o in range(len(prop[key])):	# Repeat for every object
 					colorzinha = prop[key][o]["color"]
 					color_list.append(colorzinha)
@@ -63,8 +63,8 @@ showNormals = True
 list_depth = sorted(glob.glob("selecionadas_wall_cylinder/*_depth.png"))
 list_rgb = sorted(glob.glob("selecionadas_wall_cylinder/*.jpg"))
 
-# list_depth = sorted(glob.glob("selecionadas_wall_box/*_depth.png"))
-# list_rgb = sorted(glob.glob("selecionadas_wall_box/*.jpg"))
+#list_depth = sorted(glob.glob("selecionadas_wall_box/*_depth.png"))
+#list_rgb = sorted(glob.glob("selecionadas_wall_box/*.jpg"))
 
 transformationList = [] # Should be n-1 images
 

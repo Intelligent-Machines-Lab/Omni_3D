@@ -146,7 +146,9 @@ class LocalScene:
             points = np.asarray(self.pointCloud_objects[i_obj].points)
             cyl.find(points, thresh=0.05, maxIteration=1000, forceAxisVector = self.groundNormal, useRANSAC = False)
             cyl.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
+            cyl.calculatePlanification(showNormal=False)
             self.mainCylinders.append(cyl)
+
 
     def getCylinders(self, maxRadius= 9999999, showPointCloud = True):
         cymesh = []
@@ -159,7 +161,17 @@ class LocalScene:
                 mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
                 mesh_cylinder = mesh_cylinder.translate((self.mainCylinders[i_obj].center[0], self.mainCylinders[i_obj].center[1], self.mainCylinders[i_obj].center[2]))
                 cymesh.append(mesh_cylinder)
+            if(self.mainCylinders[i_obj].circulation_mean > 0.009):
+                obb = cymesh[-1].get_oriented_bounding_box()
+                obb.color = (0,1,0)
+                cymesh.append(obb)
+            else:
+                obb = cymesh[-1].get_oriented_bounding_box()
+                obb.color = (1,0,0)
+                cymesh.append(obb)
+
         obcylinder = []     
+
         if(showPointCloud):
             obcylinder = copy.deepcopy(self.pointCloud_objects)
             obcylinder.extend(cymesh)

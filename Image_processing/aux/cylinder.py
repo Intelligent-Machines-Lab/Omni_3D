@@ -12,6 +12,9 @@ class Cylinder:
 		self.tMatrix = [] # env to plane
 		self.rMatrix = [] # env to plane
 		self.color = []
+		self.nPoints = 0
+		self.circulation_mean = 0
+		self.circulation_std = 0
 
 
 	def find(self, pts, thresh=0.2, minPoints=50, maxIteration=5000, useRANSAC = True, forceAxisVector = []):
@@ -93,7 +96,11 @@ class Cylinder:
 					self.center = center
 					self.normal = vecC
 					self.radius = radius
+					self.radius_mean = 0
+					self.radius_std = 0
+					self.spread = 0
 		else:
+			# Initial centroid and radius estimation
 			centroid = np.median(pts, axis=0)
 			centroid[0] = np.min(pts[:,0])+(np.max(pts[:,0])-np.min(pts[:,0]))/2
 			centroid[1] = np.min(pts[:,1])+ (np.max(pts[:,1])-np.min(pts[:,1]))/2
@@ -105,10 +112,24 @@ class Cylinder:
 			radius_mean = np.mean(dist_pt)
 			radius_std = np.std(dist_pt)
 			radius = radius_mean+2*radius_std
+
+			# Refine centroid and radius
+			# Move centroid along the camera > centroid axis.
+			# First calculate the axis https://www.maplesoft.com/support/help/Maple/view.aspx?path=MathApps/ProjectionOfVectorOntoPlane
+			projNormal = np.dot((np.dot(centroid, forceAxisVector)/(np.linalg.norm(forceAxisVector)**2)), forceAxisVector)
+			projPlane  = centroid - projNormal
+			projPlane = projPlane / np.linalg.norm(projPlane)
+			distMove = (2*radius*np.sin(70*np.pi/180)/(3*70*np.pi/180))*projPlane
+			centroid = centroid + distMove
+
+
 			self.center = centroid
 			self.normal = forceAxisVector
 			self.radius = radius
 			self.inliers = pts
+			self.radius_mean = radius_mean
+			self.radius_std = radius_std
+			self.spread = radius_std/radius_mean
 
 		# Calculate heigh from center
 		pts_Z = rodrigues_rot(pts, self.normal, [0,0,1])
@@ -116,10 +137,54 @@ class Cylinder:
 		centered_pts_Z = pts_Z[:, 2] - center_Z[2]
 
 		self.height = [np.min(centered_pts_Z), np.max(centered_pts_Z)]
-
+		self.nPoints = n_points
 
 		return self.center, self.normal, self.radius,  self.inliers, self.height 
 
 
+	def calculatePlanification(self, showNormal=True):
+		pcd = o3d.geometry.PointCloud()
+		pcd.points = o3d.utility.Vector3dVector(self.inliers)
+		pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=500))
+		pcd.orient_normals_towards_camera_location()
+		pcd.normalize_normals()
+
+		normals = np.asarray(copy.deepcopy(pcd.normals))
+		vecC_stakado =  np.stack([self.normal]*self.nPoints,0)
+
+		# Projection of normal in the plane from which the normal is the axis
+		# https://stackoverflow.com/questions/35090401/how-to-calculate-the-dot-product-of-two-arrays-of-vectors-in-python
+		# Same as:
+		# # First calculate the axis https://www.maplesoft.com/support/help/Maple/view.aspx?path=MathApps/ProjectionOfVectorOntoPlane
+		# # projNormal = np.dot((np.dot(centroid, forceAxisVector)/(np.linalg.norm(forceAxisVector)**2)), forceAxisVector)
+		un = (normals*vecC_stakado).sum(1)
+		m_nn_m = np.linalg.norm(self.normal)**2
+		unn = (un*self.normal[:,np.newaxis]).T
+		projNormal = normals - np.divide(unn,m_nn_m)
+		pcd.normals = o3d.utility.Vector3dVector(projNormal)
+		#pcd.normalize_normals()
+
+		pcd2 = copy.deepcopy(pcd)
+
+		# Calculate vector perpenticular from axis to point
+		dist_pt = np.cross(vecC_stakado, (self.center-self.inliers))
+		dist_pt = dist_pt / np.linalg.norm(dist_pt)
+
+		# If they are orthogonal, means they are aligned, high values are planes
+		circulation = np.cross(dist_pt, projNormal)
+		circulation_abs = np.linalg.norm(circulation, axis=1)
+		self.circulation_mean = np.mean(circulation_abs)
+		self.circulation_std = np.std(circulation_abs)
+
+		pcd2.normals = o3d.utility.Vector3dVector(dist_pt*10)
+		#pcd2.normalize_normals()
+		if(showNormal):
+			o3d.visualization.draw_geometries([pcd, pcd2], point_show_normal=True)
+
+
+
+
 	def getProrieties(self):
-		return {"center": self.center, "axis": self.normal,"radius": self.radius,"height": self.height, "color": self.color}
+		return {"center": self.center, "axis": self.normal,"radius": self.radius,"height": self.height,"radius_mean": self.radius_mean,
+				"radius_std": self.radius_std,"spread": self.spread,"nPoints": self.nPoints, "color": self.color, 
+				"circulation_mean":self.circulation_mean, "circulation_std":self.circulation_std }
