@@ -67,9 +67,9 @@ nImages = len(df.index)
 
 transformationList = [] # Should be n-1 images
 gc = GlobalScene()
-iangx = df['ang_x'].values[0]
-iangy = df['ang_y'].values[0]
-iangz = df['ang_z'].values[0]
+last_angx = df['ang_x'].values[0]
+last_angy = df['ang_y'].values[0]
+last_angz = df['ang_z'].values[0]
 
 for i in range(nImages):
 	color_raw = o3d.io.read_image("gazebo_dataset/"+str(i)+"_rgb.png")
@@ -77,15 +77,19 @@ for i in range(nImages):
 	pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=100, showImages = False)
 	o3d.visualization.draw_geometries([pcd])
 
-	c_linear = [df['c_linear_x'].values[i], df['c_linear_y'].values[i], df['c_linear_z'].values[i]]
-	c_angular = [df['c_angular_x'].values[i], df['c_angular_y'].values[i], df['c_angular_z'].values[i]]
 	t_dur = df['t_command'].values[i]
+	c_linear = [df['c_linear_x'].values[i], df['c_linear_y'].values[i], df['c_linear_z'].values[i]]
+	c_angular = [df['ang_x'].values[i]-last_angx, df['ang_y'].values[i]-last_angy, df['ang_z'].values[i]-last_angz]/t_dur
 
-	print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
+
+	#print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
 
 
 
 	gc.add_pcd(pcd, c_linear, c_angular, t_dur)
+	last_angx = df['ang_x'].values[i]
+	last_angy = df['ang_y'].values[i]
+	last_angz = df['ang_z'].values[i]
 
 	# ls = LocalScene(pcd)
 

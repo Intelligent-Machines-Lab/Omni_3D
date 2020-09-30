@@ -60,9 +60,10 @@ class GlobalScene:
         #pcd.points[1] = - pcd.points[1]
         #pcd.points[2] = - pcd.points[2]
         pcd_moved = copy.deepcopy(pcd).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc)
-        pcd_moved = pcd_moved.voxel_down_sample(voxel_size=0.01)
-        #mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
+        pcd_moved = pcd_moved.voxel_down_sample(voxel_size=0.1)
+        mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc)
         self.pcd_total.append(pcd_moved)
+        self.pcd_total.append(mesh_frame)
         self.scenes_rotation.append(atual_angulo)
         self.scenes_translation.append(atual_loc)
         o3d.visualization.draw_geometries(self.pcd_total)
