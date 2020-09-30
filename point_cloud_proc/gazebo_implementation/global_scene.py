@@ -10,7 +10,9 @@ from tkinter import *
 from tkinter import ttk
 from aux.aux import *
 from aux.LocalScene import LocalScene
+from aux.GlobalScene import GlobalScene
 from aux.plane import Plane
+import pandas as pd
 import _thread #thread module imported
 
 
@@ -53,49 +55,48 @@ def showGUI(prop):
 	tree.pack()
 	root.mainloop()
 
-n = 0
-
-#list_depth = ["selecionadas_wall_box/1_depth.png"]
-#list_rgb = ["selecionadas_wall_box/1_rgb.jpg"]
-
-showNormals = True
-
-#list_depth = sorted(glob.glob("selecionadas_wall_cylinder/*_depth.png"))
-#list_rgb = sorted(glob.glob("selecionadas_wall_cylinder/*.jpg"))
 
 list_depth = sorted(glob.glob("gazebo_dataset/*_depth.png"))
 list_rgb = sorted(glob.glob("gazebo_dataset/*_rgb.png"))
 
-transformationList = [] # Should be n-1 images
+df = pd.read_csv("gazebo_dataset/data.txt")
+df.columns =[col.strip() for col in df.columns]
 
-for i in range(len(list_rgb)):
-	color_raw = o3d.io.read_image(list_rgb[i])
-	depth_raw = o3d.io.read_image(list_depth[i])
+
+nImages = len(df.index)
+
+transformationList = [] # Should be n-1 images
+gc = GlobalScene()
+iangx = df['ang_x'].values[0]
+iangy = df['ang_y'].values[0]
+iangz = df['ang_z'].values[0]
+
+for i in range(nImages):
+	color_raw = o3d.io.read_image("gazebo_dataset/"+str(i)+"_rgb.png")
+	depth_raw = o3d.io.read_image("gazebo_dataset/"+str(i)+"_depth.png")
 	pcd = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=100, showImages = False)
 	o3d.visualization.draw_geometries([pcd])
 
-	ls = LocalScene(pcd)
+	c_linear = [df['c_linear_x'].values[i], df['c_linear_y'].values[i], df['c_linear_z'].values[i]]
+	c_angular = [df['c_angular_x'].values[i], df['c_angular_y'].values[i], df['c_angular_z'].values[i]]
+	t_dur = df['t_command'].values[i]
 
-	#Ransac total
-	ls.findMainPlanes()
-	ls.defineGroundNormal()
-	#o3d.visualization.draw_geometries(ls.getMainPlanes())
-	#ls.showNotPlanes()
-	ls.clusterizeObjects()
-	#ls.showObjects()
-	ls.fitCylinder()
-	ls.findSecundaryPlanes()
-	_thread.start_new_thread(showGUI, (ls.getProprieties(),))
-	ls.custom_draw_geometry()
+	print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
 
-	#ls.showFeatures()
-	
 
-	
-	# all_objects = inlier_cloud_list[0:-1]
-	# all_objects.extend(cluster_array)
-	# print(all_objects)
-	# o3d.visualization.draw_geometries(all_objects)
+
+	gc.add_pcd(pcd, c_linear, c_angular, t_dur)
+
+	# ls = LocalScene(pcd)
+
+	# ls.findMainPlanes()
+	# ls.defineGroundNormal()
+	# ls.clusterizeObjects()
+	# ls.fitCylinder()
+	# ls.findSecundaryPlanes()
+	# _thread.start_new_thread(showGUI, (ls.getProprieties(),))
+	# ls.custom_draw_geometry()
+
 
 
 

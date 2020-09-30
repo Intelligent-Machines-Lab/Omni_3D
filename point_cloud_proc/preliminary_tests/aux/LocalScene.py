@@ -11,6 +11,7 @@ class LocalScene:
 
     def __init__(self, pointCloud):
         self.pointCloud = pointCloud # Total point cloud
+        print("Numero de pontos na cena: "+str(np.asarray(self.pointCloud.points).shape[0]))
         self.pointCloud_notMainPlanes = []
         self.pointCloud_objects = []
 
@@ -87,6 +88,7 @@ class LocalScene:
             #print(i)
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(self.mainPlanes[i].inliers)
+            # print("Numero de pontos na cena: "+str(pcd.points.shape[0]))
             #print(self.mainPlanes[i].equation)
             
             pointCloudList.append(pcd.paint_uniform_color(self.mainPlanes[i].color))

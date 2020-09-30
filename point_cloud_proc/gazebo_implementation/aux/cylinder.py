@@ -122,6 +122,12 @@ class Cylinder:
 			distMove = (2*radius*np.sin(70*np.pi/180)/(3*70*np.pi/180))*projPlane
 			centroid = centroid + distMove
 
+			dist_pt = np.cross(vecC_stakado, (centroid- pts))
+			dist_pt = np.linalg.norm(dist_pt, axis=1)
+			radius_mean = np.mean(dist_pt)
+			radius_std = np.std(dist_pt)
+			radius = radius_mean+2*radius_std
+
 
 			self.center = centroid
 			self.normal = forceAxisVector

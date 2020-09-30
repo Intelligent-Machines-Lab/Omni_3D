@@ -9,8 +9,11 @@ from aux.aux import *
 
 class LocalScene:
 
-    def __init__(self, pointCloud):
+    def __init__(self, pointCloud, filter_radius=False):
         self.pointCloud = pointCloud # Total point cloud
+        self.npontos = np.asarray(self.pointCloud.points).shape[0]
+        self.filter_radius = filter_radius
+        #print(self.npontos)
         self.pointCloud_notMainPlanes = []
         self.pointCloud_objects = []
 
@@ -20,6 +23,9 @@ class LocalScene:
 
         self.groundNormal = [] # Vector normal to the ground
         self.groundID = 0
+
+        self.circulation_cylinder = 0.018
+        self.percentage_std_radius = 0.11
 
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
@@ -65,19 +71,19 @@ class LocalScene:
             p = Plane()
             best_eq, best_inliers = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=1000)
             qtn_inliers = best_inliers.shape[0]
-            if(qtn_inliers < 30000):
+            if(qtn_inliers < int(0.05*self.npontos)):
                 break
             out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
             points = np.asarray(out.points)
-            if(points.shape[0] < 1000):
+            if(points.shape[0] < int(0.004*self.npontos)):
                  break
             outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
             p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
             self.mainPlanes.append(p)
-
-            cl, ind = outlier_cloud.remove_radius_outlier(nb_points=500, radius=0.12)
-            #display_inlier_outlier(outlier_cloud, ind)
-            outlier_cloud = outlier_cloud.select_by_index(ind)
+            if(self.filter_radius):
+                cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.12)
+                #display_inlier_outlier(outlier_cloud, ind)
+                outlier_cloud = outlier_cloud.select_by_index(ind)
         self.pointCloud_notMainPlanes = outlier_cloud
 
 
@@ -100,7 +106,7 @@ class LocalScene:
             mesh.rotate(get_rotationMatrix_from_vectors([0, 0, 1], self.groundNormal), center=(0, 0, 0)).translate(centerPCD)
             pointCloudList.append(mesh)
         return pointCloudList
-        #o3d.visualization.draw_geometries(pointCloudList)
+        o3d.visualization.draw_geometries(pointCloudList)
 
     def showNotPlanes(self):
         o3d.visualization.draw_geometries([self.pointCloud_notMainPlanes])
@@ -127,7 +133,7 @@ class LocalScene:
     def clusterizeObjects(self):
         filtered_not_planes = self.pointCloud_notMainPlanes
         with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
-            labels = np.array(filtered_not_planes.cluster_dbscan(eps=0.07, min_points=200, print_progress=False))
+            labels = np.array(filtered_not_planes.cluster_dbscan(eps=0.1, min_points=int(0.001*self.npontos/15), print_progress=False))
 
         max_label = labels.max()
         print(f"point cloud has {max_label + 1} clusters")
@@ -138,7 +144,7 @@ class LocalScene:
             index_from_cluster = np.where(labels == n_cluster)[0]
             cluster = filtered_not_planes.select_by_index( index_from_cluster.tolist())
             cluster_qnt_points = np.asarray(cluster.points).shape[0]
-            if(cluster_qnt_points > 1000):
+            if(cluster_qnt_points > int(0.004*self.npontos)):
                 self.pointCloud_objects.append(cluster)
 
 
@@ -163,16 +169,17 @@ class LocalScene:
                 mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
                 mesh_cylinder = mesh_cylinder.translate((self.mainCylinders[i_obj].center[0], self.mainCylinders[i_obj].center[1], self.mainCylinders[i_obj].center[2]))
                 
-            if(self.mainCylinders[i_obj].circulation_mean > 0.009):
+            # if(self.mainCylinders[i_obj].circulation_mean > self.circulation_cylinder):
+            if(self.mainCylinders[i_obj].radius_std/self.mainCylinders[i_obj].radius_mean < self.percentage_std_radius):
                 cymesh.append(mesh_cylinder)
                 obb = cymesh[-1].get_oriented_bounding_box()
                 obb.color = (0,1,0)
                 cymesh.append(obb)
-            #else:
-            #    cymesh.append(mesh_cylinder)
-            #    obb = cymesh[-1].get_oriented_bounding_box()
-            #    obb.color = (1,0,0)
-            #    cymesh.append(obb)
+            else:
+               cymesh.append(mesh_cylinder)
+               obb = cymesh[-1].get_oriented_bounding_box()
+               obb.color = (1,0,0)
+               cymesh.append(obb)
 
         obcylinder = []     
 
@@ -207,28 +214,33 @@ class LocalScene:
 
 
     def findSecundaryPlanes(self):
+        removeIndexes = []
         for i_cyl in range(len(self.mainCylinders)):
-            if(self.mainCylinders[i_cyl].circulation_mean < 0.009):
+            # if(self.mainCylinders[i_cyl].circulation_mean < self.circulation_cylinder):
+            if(self.mainCylinders[i_cyl].radius_std/self.mainCylinders[i_cyl].radius_mean > self.percentage_std_radius):
                 outlier_cloud = copy.deepcopy(self.pointCloud_objects[i_cyl])
                 while(True):
                     # Ransac planar
                     points = np.asarray(outlier_cloud.points)
                     
                     p = Plane()
-                    best_eq, best_inliers = p.findPlane(points, thresh=0.03, minPoints=40, maxIteration=1000)
-                    qtn_inliers = best_inliers.shape[0]
-                    if(qtn_inliers < 500):
+                    best_eq, best_inliers = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=1000)
+                    qtn_inliers = np.asarray(best_inliers).shape[0]
+                    if(qtn_inliers < int(0.0005*self.npontos)):
                         break
                     out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
                     points = np.asarray(out.points)
                     outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
                     p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
                     self.secundaryPlanes.append(p)
-                    cl, ind = outlier_cloud.remove_radius_outlier(nb_points=500, radius=0.10)
-                    #display_inlier_outlier(outlier_cloud, ind)
-                    outlier_cloud = outlier_cloud.select_by_index(ind)
-                    if(np.asarray(outlier_cloud.points).shape[0] < 50):
+                    removeIndexes.append(i_cyl)
+                    if(self.filter_radius):
+                        cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.10)
+                        display_inlier_outlier(outlier_cloud, ind)
+                        outlier_cloud = outlier_cloud.select_by_index(ind)
+                    if(np.asarray(outlier_cloud.points).shape[0] < 4):
                          break
+        self.mainCylinders = [i for j, i in enumerate(self.mainCylinders) if j not in removeIndexes]
 
     def getSecundaryPlanes(self):
         pointCloudList = []

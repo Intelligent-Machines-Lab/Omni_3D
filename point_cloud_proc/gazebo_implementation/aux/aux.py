@@ -61,6 +61,46 @@ def rodrigues_rot(P, n0, n1):
     return P_rot
 
 
+def get_rotation_angvel_matrix_bti(angles):
+
+    phi = angles[0]
+    theta = angles[1]
+    psi = angles[2]
+
+    matr = np.asarray([[1, np.sin(phi)*np.tan(theta), np.cos(phi)*np.tan(theta)],
+                       [0, np.cos(phi), -np.sin(phi)],
+                       [0, np.sin(phi)/np.cos(theta), np.cos(phi)/np.cos(theta)]])
+    
+    return matr
+
+
+def get_rotation_matrix_bti(angles):
+    print("sedfefaw"+str(angles))
+    phi = angles[0]
+    theta = angles[1]
+    psi = angles[2]
+
+    R11 = np.cos(theta)*np.cos(psi)
+    R12 = np.sin(phi)*np.sin(theta)*np.cos(psi) - np.cos(phi)*np.sin(psi)
+    R13 = np.cos(phi)*np.sin(theta)*np.cos(psi) + np.sin(phi)*np.sin(psi)
+
+    R21 = np.cos(theta)*np.sin(psi)
+    R22 = np.sin(phi)*np.sin(theta)*np.sin(psi) + np.cos(phi)*np.cos(psi)
+    R23 = np.cos(phi)*np.sin(theta)*np.sin(psi) - np.sin(phi)*np.cos(psi)
+
+    R31 = -np.sin(theta)
+    R32 = np.sin(phi)*np.cos(theta)
+    R33 = np.cos(phi)*np.cos(theta)
+
+    matr = np.asarray([[R11, R12, R13],
+                       [R21, R22, R23],
+                       [R31, R32, R33]])
+
+    print("matriz de rotação: "+str(matr))
+    
+    return matr    
+
+
 
 
 def open_pointCloud_from_files(n = 1, folder="images_a_gazebo", end_color = "_rgb.png", end_depth="_depth.png", meters_trunc = 6, showImages = True):
