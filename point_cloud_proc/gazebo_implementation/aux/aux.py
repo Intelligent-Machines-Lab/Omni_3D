@@ -75,7 +75,7 @@ def get_rotation_angvel_matrix_bti(angles):
 
 
 def get_rotation_matrix_bti(angles):
-    print("sedfefaw"+str(angles))
+    #print("sedfefaw"+str(angles))
     phi = angles[0]
     theta = angles[1]
     psi = angles[2]
@@ -96,7 +96,7 @@ def get_rotation_matrix_bti(angles):
                        [R21, R22, R23],
                        [R31, R32, R33]])
 
-    print("matriz de rotação: "+str(matr))
+    #print("matriz de rotação: "+str(matr))
     
     return matr    
 
@@ -158,3 +158,7 @@ def display_inlier_outlier(cloud, ind):
     inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
     o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 
+def from_camera_to_inertial(pcd):
+        pcd = pcd.rotate(get_rotationMatrix_from_vectors([0, 0, -1], [1,0,0]), center=(0,0,0))
+        pcd = pcd.rotate(get_rotationMatrix_from_vectors([0, 1, 0], [0,0,-1]), center=(0,0,0))
+        return pcd

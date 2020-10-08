@@ -6,70 +6,91 @@ from aux import *
 
 class Plane:
 
-	def __init__(self):
-		self.inliers = []
-		self.inliersId = []
-		self.equation = []
-		self.color = []
-		self.nPoints = 0
+    def __init__(self):
+        self.inliers = []
+        self.inliersId = []
+        self.equation = []
+        self.color = []
+        self.nPoints = 0
 
 
-	def findPlane(self, pts, thresh=0.05, minPoints=100, maxIteration=1000):
-		n_points = pts.shape[0]
-		self.nPoints = n_points
-		print(n_points)
-		best_eq = []
-		best_inliers = []
+    def findPlane(self, pts, thresh=0.05, minPoints=100, maxIteration=1000):
+        n_points = pts.shape[0]
+        self.nPoints = n_points
+        print(n_points)
+        best_eq = []
+        best_inliers = []
 
-		for it in range(maxIteration):
-			# Samples 3 random points 
-			id_samples = random.sample(range(1, n_points-1), 3)
-			#print(id_samples)
-			pt_samples = pts[id_samples]
-			#print(pt_samples)
+        for it in range(maxIteration):
+            # Samples 3 random points 
+            id_samples = random.sample(range(1, n_points-1), 3)
+            #print(id_samples)
+            pt_samples = pts[id_samples]
+            #print(pt_samples)
 
-			# We have to find the plane equation described by those 3 points
-			# We find first 2 vectors that are part of this plane
-			# A = pt2 - pt1
-			# B = pt3 - pt1
+            # We have to find the plane equation described by those 3 points
+            # We find first 2 vectors that are part of this plane
+            # A = pt2 - pt1
+            # B = pt3 - pt1
 
-			vecA = pt_samples[1,:] - pt_samples[0,:]
-			vecB = pt_samples[2,:] - pt_samples[0,:]
+            vecA = pt_samples[1,:] - pt_samples[0,:]
+            vecB = pt_samples[2,:] - pt_samples[0,:]
 
-			#print(vecA)
-			#print(vecB)
+            #print(vecA)
+            #print(vecB)
 
-			# Now we compute the cross product of vecA and vecB to get vecC which is normal to the plane
-			vecC = np.cross(vecA, vecB)
-			
+            # Now we compute the cross product of vecA and vecB to get vecC which is normal to the plane
+            vecC = np.cross(vecA, vecB)
+            
 
-			# The plane equation will be vecC[0]*x + vecC[1]*y + vecC[0]*z = -k
-			# We have to use a point to find k
-			vecC = vecC / np.linalg.norm(vecC)
-			k = -np.sum(np.multiply(vecC, pt_samples[1,:]))
-			plane_eq = [vecC[0], vecC[1], vecC[2], k]
-			
-			#print(plane_eq)
+            # The plane equation will be vecC[0]*x + vecC[1]*y + vecC[0]*z = -k
+            # We have to use a point to find k
+            vecC = vecC / np.linalg.norm(vecC)
+            k = -np.sum(np.multiply(vecC, pt_samples[1,:]))
+            plane_eq = [vecC[0], vecC[1], vecC[2], k]
+            
+            #print(plane_eq)
 
-			# Distance from a point to a plane 
-			# https://mathworld.wolfram.com/Point-PlaneDistance.html
-			pt_id_inliers = [] # list of inliers ids
-			dist_pt = (plane_eq[0]*pts[:,0]+plane_eq[1]*pts[:, 1]+plane_eq[2]*pts[:, 2]+plane_eq[3])/np.sqrt(plane_eq[0]**2+plane_eq[1]**2+plane_eq[2]**2)
-			
-			# Select indexes where distance is biggers than the threshold
-			pt_id_inliers = np.where(np.abs(dist_pt) <= thresh)[0]
-			if(len(pt_id_inliers) > len(best_inliers)):
-				best_eq = plane_eq
-				best_inliers = pt_id_inliers
-			self.inliers = pts[best_inliers]
-			self.inliersId = best_inliers
-			self.equation = best_eq
-		return best_eq, best_inliers
+            # Distance from a point to a plane 
+            # https://mathworld.wolfram.com/Point-PlaneDistance.html
+            pt_id_inliers = [] # list of inliers ids
+            dist_pt = (plane_eq[0]*pts[:,0]+plane_eq[1]*pts[:, 1]+plane_eq[2]*pts[:, 2]+plane_eq[3])/np.sqrt(plane_eq[0]**2+plane_eq[1]**2+plane_eq[2]**2)
+            
+            # Select indexes where distance is biggers than the threshold
+            pt_id_inliers = np.where(np.abs(dist_pt) <= thresh)[0]
+            if(len(pt_id_inliers) > len(best_inliers)):
+                best_eq = plane_eq
+                best_inliers = pt_id_inliers
+            self.inliers = pts[best_inliers]
+            self.inliersId = best_inliers
+            self.equation = best_eq
+        return best_eq, best_inliers
 
-	def getProrieties(self):
-		return {"equation": self.equation,"nPoints":self.nPoints, "color": self.color}
+    def move(self, rotMatrix=[[1,0,0],[0, 1, 0],[0, 0, 1]], tranlation=[0, 0, 0]):
+        print("ATUAL LOCALIZAÇÃO "+str(tranlation))
+        print("ATUAL ROTACAO "+str(rotMatrix))
+        self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
+        vec = np.dot(rotMatrix, [self.equation[0], self.equation[1], self.equation[2]]) #+ tranlation
+        d = self.equation[3] + np.dot(vec, tranlation)
+        self.equation = [vec[0], vec[1], vec[2], d]
 
-		
+    def getProrieties(self):
+        return {"equation": self.equation,"nPoints":self.nPoints, "color": self.color}
+
+    def get_geometry(self):
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(self.inliers)
+        pcd.voxel_down_sample(voxel_size=0.1)
+        pcd.paint_uniform_color(self.color)
+        # obb = pcd.get_oriented_bounding_box()
+        # obb.color = (self.color[0], self.color[1], self.color[2])
+        # estimate radius for rolling ball
+
+
+        print("teste")
+        return pcd
+
+        
 
 
 
