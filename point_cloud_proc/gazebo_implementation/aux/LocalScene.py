@@ -61,6 +61,9 @@ class LocalScene:
         vis_original.destroy_window()
         vis_feature.destroy_window()
 
+
+
+
     def findMainPlanes(self):
         outlier_cloud = copy.deepcopy(self.pointCloud)
         inlier_cloud_list = []
@@ -69,7 +72,7 @@ class LocalScene:
             points = np.asarray(outlier_cloud.points)
             
             p = Plane()
-            best_eq, best_inliers = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=1000)
+            best_eq, best_inliers = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=500)
             qtn_inliers = best_inliers.shape[0]
             if(qtn_inliers < int(0.1*self.npontos)):
                 break
@@ -176,10 +179,10 @@ class LocalScene:
                 obb.color = (0,1,0)
                 cymesh.append(obb)
             else:
-               cymesh.append(mesh_cylinder)
-               obb = cymesh[-1].get_oriented_bounding_box()
-               obb.color = (1,0,0)
-               cymesh.append(obb)
+                cymesh.append(mesh_cylinder)
+                obb = cymesh[-1].get_oriented_bounding_box()
+                obb.color = (1,0,0)
+                cymesh.append(obb)
 
         obcylinder = []     
 
@@ -224,7 +227,7 @@ class LocalScene:
                     points = np.asarray(outlier_cloud.points)
                     
                     p = Plane()
-                    best_eq, best_inliers = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=1000)
+                    best_eq, best_inliers = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=500)
                     qtn_inliers = np.asarray(best_inliers).shape[0]
                     if(qtn_inliers < int(0.0005*self.npontos)):
                         break
@@ -238,7 +241,7 @@ class LocalScene:
                         cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.10)
                         display_inlier_outlier(outlier_cloud, ind)
                         outlier_cloud = outlier_cloud.select_by_index(ind)
-                    if(np.asarray(outlier_cloud.points).shape[0] < 4):
+                    if(np.asarray(outlier_cloud.points).shape[0] < 10):
                          break
         self.mainCylinders = [i for j, i in enumerate(self.mainCylinders) if j not in removeIndexes]
 

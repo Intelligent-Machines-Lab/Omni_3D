@@ -21,7 +21,6 @@ class Cylinder:
         
         n_points = pts.shape[0]
         if useRANSAC:
-            print(n_points)
             best_eq = []
             best_inliers = []
 
@@ -105,7 +104,7 @@ class Cylinder:
             centroid[0] = np.min(pts[:,0])+(np.max(pts[:,0])-np.min(pts[:,0]))/2
             centroid[1] = np.min(pts[:,1])+ (np.max(pts[:,1])-np.min(pts[:,1]))/2
             centroid[2] = np.min(pts[:,2])+(np.max(pts[:,2])-np.min(pts[:,2]))/2
-            print(centroid)
+            #print(centroid)
             vecC_stakado =  np.stack([forceAxisVector]*n_points,0)
             dist_pt = np.cross(vecC_stakado, (centroid- pts))
             dist_pt = np.linalg.norm(dist_pt, axis=1)
@@ -188,9 +187,9 @@ class Cylinder:
             o3d.visualization.draw_geometries([pcd, pcd2], point_show_normal=True)
 
     def move(self, rotMatrix=[[1,0,0],[0, 1, 0],[0, 0, 1]], translation=[0, 0, 0]):
-        print("Centro antes: "+str(self.center))
+        #print("Centro antes: "+str(self.center))
         self.center = np.dot(rotMatrix, self.center) + translation
-        print("Centro depois: "+str(self.center))
+        #print("Centro depois: "+str(self.center))
         self.inliers = np.dot(self.inliers, rotMatrix.T) + translation
         self.normal = np.dot(rotMatrix, self.normal)
 
@@ -201,7 +200,7 @@ class Cylinder:
         mesh_cylinder.compute_vertex_normals()
         mesh_cylinder.paint_uniform_color(self.color)
         mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
-        print("Centro depois2: "+str(self.center))
+        #print("Centro depois2: "+str(self.center))
         mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
         return mesh_cylinder
 

@@ -9,7 +9,11 @@ from aux.cylinder import Cylinder
 from aux.plane import Plane
 from aux.generic_feature import Generic_feature
 from aux.aux import *
-import _thread
+import threading
+from tkinter import *
+from tkinter import ttk
+from tkinter import Toplevel
+import pickle
 
 class GlobalScene:
 
@@ -25,6 +29,79 @@ class GlobalScene:
         self.fet_geo = []
 
         self.ground_normal = []
+        self.lc_atual = []
+        self.propwindow = []
+
+        self.updated_global = threading.Event()
+        self.updated_global.clear()
+
+
+
+
+        
+
+
+
+    def custom_draw_geometry(self):
+        # The following code achieves the same effect as:
+        # o3d.visualization.draw_geometries([pcd])
+
+        vis_original = o3d.visualization.Visualizer()
+
+        vis_original.create_window(window_name='Original', width=960, height=540, left=0, top=0)
+        vis_original.add_geometry(self.lc_atual.pointCloud)
+
+        feat = self.lc_atual.getMainPlanes()
+        feat.extend(self.lc_atual.getCylinders(showPointCloud=False))
+        feat.extend(self.lc_atual.getSecundaryPlanes())
+        vis_feature = o3d.visualization.Visualizer()
+        vis_feature.create_window(window_name='Feature', width=960, height=540, left=960, top=0)
+        for x in range(len(feat)):
+            vis_feature.add_geometry(feat[x])
+
+
+        vis_feature_global = o3d.visualization.Visualizer()
+        vis_feature_global.create_window(window_name='Feature global', width=960, height=540, left=960, top=540)
+        for x in range(len(self.fet_geo)):
+            vis_feature_global.add_geometry(self.fet_geo[x])
+
+
+
+        while True:
+            vis_original.update_geometry(self.lc_atual.pointCloud)
+            if not vis_original.poll_events():
+                break
+            vis_original.update_renderer()
+
+            feat = self.lc_atual.getMainPlanes()
+            feat.extend(self.lc_atual.getCylinders(showPointCloud=False))
+            feat.extend(self.lc_atual.getSecundaryPlanes())
+            for x in range(len(feat)):
+                vis_feature.update_geometry(feat[x])
+            
+            if not vis_feature.poll_events():
+                break
+            vis_feature.update_renderer()
+
+
+
+            for x in range(len(self.fet_geo)):
+                vis_feature_global.update_geometry(self.fet_geo[x])
+            if not vis_feature_global.poll_events():
+                break
+            vis_feature_global.update_renderer()
+
+        vis_feature_global.destroy_window()
+        vis_original.destroy_window()
+        vis_feature.destroy_window()
+
+    # def draw_geometries_pick_points(self, geometries):
+    #     vis = o3d.visualization.VisualizerWithEditing()
+    #     vis.create_window()
+    #     for geometry in geometries:
+    #         vis.add_geometry(geometry)
+    #     vis.run()
+    #     vis.destroy_window()
 
 
     def add_pcd(self, pcd, commands_odom_linear, commands_odom_angular, duration):
@@ -67,7 +144,8 @@ class GlobalScene:
         # print("AAAAAAAAAAAAAAAAAAAh")
         # print(get_rotation_matrix_bti(atual_angulo).T)
         ls = LocalScene(pcd)
-        self.ground_normal = ls.groundNormal
+        self.lc_atual = ls
+        
         #Ransac total
         ls.findMainPlanes()
         ls.defineGroundNormal()
@@ -77,26 +155,26 @@ class GlobalScene:
         #ls.showObjects()
         ls.fitCylinder()
         ls.findSecundaryPlanes()
-        ls.custom_draw_geometry()
+        self.ground_normal = ls.groundNormal
 
 
         scene_features=[]
         
         for x in range(len(ls.mainPlanes)):
             ls.mainPlanes[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.mainPlanes[x])
+            gfeature = Generic_feature(ls.mainPlanes[x], ground_normal=self.ground_normal)
             scene_features.append(gfeature)
             
 
         for x in range(len(ls.mainCylinders)):
             ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.mainCylinders[x])
+            gfeature = Generic_feature(ls.mainCylinders[x], ground_normal=self.ground_normal)
             scene_features.append(gfeature)
 
 
         for x in range(len(ls.secundaryPlanes)):
             ls.secundaryPlanes[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.secundaryPlanes[x])
+            gfeature = Generic_feature(ls.secundaryPlanes[x], ground_normal=self.ground_normal)
             scene_features.append(gfeature)
 
         if(len(self.features_objects)>0):
@@ -108,18 +186,33 @@ class GlobalScene:
                         break
                 if(not ja_existe):
                     self.features_objects.append(scene_features[i_cena])
-                    self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
+                    #self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
         else:
             for i_cena in range(len(scene_features)):
                 self.features_objects.append(scene_features[i_cena])
-                self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
+                #self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
 
 
         self.scenes_rotation.append(atual_angulo)
         self.scenes_translation.append(atual_loc)
+        self.fet_geo = []
+        for ob in self.features_objects:
+            self.fet_geo.append(ob.feat.get_geometry())
+
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
-        o3d.visualization.draw_geometries(self.fet_geo, mesh_show_back_face=True)
+        #ls.custom_draw_geometry()
+        threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
+
+
+        f = open('feat.pckl', 'wb')
+        pickle.dump(self.getProprieties(), f)
+        f.close()
+        #threading.Thread(target=self.showGUI, args=(self.getProprieties(),), daemon=True)
+        #self.custom_draw_geometry()
+
+        
+        
 
 
 
@@ -128,9 +221,9 @@ class GlobalScene:
         vet_mainCylinders = []
         for x in range(len(self.features_objects)):
             if isinstance(self.features_objects[x].feat,Plane):
-                vet_mainPlanes.append(self.features_objects[x].feat.getProrieties())
+                vet_mainPlanes.append(self.features_objects[x].getProprieties())
             else:
-                vet_mainCylinders.append(self.features_objects[x].feat.getProrieties())
+                vet_mainCylinders.append(self.features_objects[x].getProprieties())
         
         vet_secondaryCylinders = []
         return {"groundNormal": self.groundNormal, "planes": vet_mainPlanes, "cylinders": vet_mainCylinders, "secundaryplanes": vet_secondaryCylinders}

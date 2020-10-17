@@ -12,6 +12,7 @@ class Plane:
         self.equation = []
         self.color = []
         self.nPoints = 0
+        self.centroid = []
 
 
     def findPlane(self, pts, thresh=0.05, minPoints=100, maxIteration=1000):
@@ -61,34 +62,56 @@ class Plane:
             if(len(pt_id_inliers) > len(best_inliers)):
                 best_eq = plane_eq
                 best_inliers = pt_id_inliers
-            self.inliers = pts[best_inliers]
-            self.inliersId = best_inliers
-            self.equation = best_eq
+        self.inliers = pts[best_inliers]
+        self.inliersId = best_inliers
+        self.equation = best_eq
+        self.centroid = np.mean(self.inliers, axis=0)
         return best_eq, best_inliers
 
     def move(self, rotMatrix=[[1,0,0],[0, 1, 0],[0, 0, 1]], tranlation=[0, 0, 0]):
-        print("ATUAL LOCALIZAÇÃO "+str(tranlation))
-        print("ATUAL ROTACAO "+str(rotMatrix))
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
         vec = np.dot(rotMatrix, [self.equation[0], self.equation[1], self.equation[2]]) #+ tranlation
-        d = self.equation[3] + np.dot(vec, tranlation)
+        self.centroid = np.mean(self.inliers, axis=0)
+        #d = self.equation[3] + np.dot(vec, tranlation)
+        d = -np.sum(np.multiply(vec, self.centroid))
         self.equation = [vec[0], vec[1], vec[2], d]
 
     def getProrieties(self):
-        return {"equation": self.equation,"nPoints":self.nPoints, "color": self.color}
+        return {"equation": self.equation,"nPoints":self.inliers.shape[0], "color": self.color, "centroid":self.centroid}
+
+    def get_height(self, ground_normal):
+        pts_Z = aux.rodrigues_rot(self.inliers, ground_normal, [0,0,1])
+        center_Z = aux.rodrigues_rot(self.centroid, ground_normal, [0,0,1])[0]
+        centered_pts_Z = pts_Z[:, 2] - center_Z[2]
+        height = np.max(centered_pts_Z) - np.min(centered_pts_Z)
+        return height
+
 
     def get_geometry(self):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(self.inliers)
-        pcd.voxel_down_sample(voxel_size=0.1)
+        # pcd.voxel_down_sample(voxel_size=0.1)
         pcd.paint_uniform_color(self.color)
-        # obb = pcd.get_oriented_bounding_box()
-        # obb.color = (self.color[0], self.color[1], self.color[2])
+        #obb = pcd.get_oriented_bounding_box()
+        #obb.color = (self.color[0], self.color[1], self.color[2])
         # estimate radius for rolling ball
-
-
-        print("teste")
         return pcd
+
+
+    def append_plane(self, points):
+        #print("Shape antes de append: "+str(self.inliers.shape[0]))
+        self.inliers = np.append(self.inliers, points, axis=0)
+        #print("Shape depois de append: "+str(self.inliers.shape[0]))
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(self.inliers)
+        pcd.paint_uniform_color(self.color)
+        #print("Shape depois de append 2: "+str(np.asarray(pcd.points).shape[0]))
+        pcd = pcd.voxel_down_sample(voxel_size=0.2)
+        #print("Shape depois de append depois do downsampling: "+str(np.asarray(pcd.points).shape[0]))
+        pcd.paint_uniform_color(self.color)
+        self.inliers = np.array(pcd.points)
+        self.centroid = np.mean(self.inliers, axis=0)
+
 
         
 

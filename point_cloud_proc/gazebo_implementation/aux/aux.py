@@ -5,10 +5,10 @@ import copy
 import matplotlib.pyplot as plt
 
 def drawPlane(plane):
-	print(plane.rMatrix.T)
-	box = o3d.geometry.TriangleMesh.create_box(width=plane.size[0], height=plane.size[1], depth=0.05).translate(plane.limits_f_plane[0, :])
-	box = box.rotate(plane.rMatrix.T, center=(0,0,0)).translate(plane.tMatrix)
-	return box
+    print(plane.rMatrix.T)
+    box = o3d.geometry.TriangleMesh.create_box(width=plane.size[0], height=plane.size[1], depth=0.05).translate(plane.limits_f_plane[0, :])
+    box = box.rotate(plane.rMatrix.T, center=(0,0,0)).translate(plane.tMatrix)
+    return box
 
 
 def get_rotationMatrix_from_vectors(u, v):
@@ -159,6 +159,24 @@ def display_inlier_outlier(cloud, ind):
     o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 
 def from_camera_to_inertial(pcd):
-        pcd = pcd.rotate(get_rotationMatrix_from_vectors([0, 0, -1], [1,0,0]), center=(0,0,0))
-        pcd = pcd.rotate(get_rotationMatrix_from_vectors([0, 1, 0], [0,0,-1]), center=(0,0,0))
-        return pcd
+    pcd = pcd.rotate(get_rotationMatrix_from_vectors([0, 0, -1], [1,0,0]), center=(0,0,0))
+    pcd = pcd.rotate(get_rotationMatrix_from_vectors([0, 1, 0], [0,0,-1]), center=(0,0,0))
+    return pcd
+
+def distance_from_points_to_axis(p, axis, p_axis):
+    p = np.asarray([p])
+
+    n_points = p.shape[0]
+
+    axis_stack =  np.stack([axis]*n_points,0)
+
+    dist_pt = np.cross(axis_stack, (p_axis- p))
+    dist_pt = np.linalg.norm(dist_pt, axis=1)
+    return dist_pt
+
+def distance_from_points_to_plane(p, plane_eq):
+    print(p)
+    p = np.asarray([p])
+
+    dist_pt = (plane_eq[0]*p[:,0]+plane_eq[1]*p[:, 1]+plane_eq[2]*p[:, 2]+plane_eq[3])/np.sqrt(plane_eq[0]**2+plane_eq[1]**2+plane_eq[2]**2)
+    return dist_pt
