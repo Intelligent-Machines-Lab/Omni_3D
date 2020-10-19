@@ -3,6 +3,8 @@ import numpy as np
 import random
 import copy 
 from aux import *
+from aux.qhull_2d import *
+from aux.min_bounding_rect import *
 
 class Plane:
 
@@ -88,13 +90,34 @@ class Plane:
 
 
     def get_geometry(self):
+        print(self.inliers)
+        print("EQUACAO ", self.equation)
+        inlier_planez = self.inliers 
+        print(inlier_planez)
+        inliers_plano = aux.rodrigues_rot(copy.deepcopy(inlier_planez), [self.equation[0], self.equation[1], self.equation[2]], [0, 0, 1])- np.asarray([0, 0, -self.equation[3]])
+        print("ESSE É PRA SER 3D")
+        print(inliers_plano)
+        dd_plano = np.delete(inliers_plano, 2, 1)
+        print(dd_plano)
+        hull_points = qhull2D(dd_plano)
+        hull_points = hull_points[::-1]
+        (rot_angle, area, width, height, center_point, corner_points) = minBoundingRect(hull_points)
+        print("PONTOS: ", corner_points)
+        p = np.vstack((np.asarray(corner_points), np.asarray(center_point)))
+        print(p)
+
+        ddd_plano= np.c_[ p, np.zeros(p.shape[0]) ] + np.asarray([0, 0, -self.equation[3]])
+        print("COM ZE ZERO ", ddd_plano)
+        inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
+        print("BACK TO NORMAL: ", inliers_plano_desrotacionado)
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(self.inliers)
+        pcd.points = o3d.utility.Vector3dVector(inliers_plano_desrotacionado)
         # pcd.voxel_down_sample(voxel_size=0.1)
         pcd.paint_uniform_color(self.color)
         #obb = pcd.get_oriented_bounding_box()
         #obb.color = (self.color[0], self.color[1], self.color[2])
         # estimate radius for rolling ball
+        #o3d.visualization.draw_geometries([pcd])
         return pcd
 
 
