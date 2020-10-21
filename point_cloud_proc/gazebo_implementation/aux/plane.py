@@ -90,35 +90,56 @@ class Plane:
 
 
     def get_geometry(self):
-        print(self.inliers)
-        print("EQUACAO ", self.equation)
+        #print(self.inliers)
+        #print("EQUACAO ", self.equation)
         inlier_planez = self.inliers 
-        print(inlier_planez)
+        #print(inlier_planez)
         inliers_plano = aux.rodrigues_rot(copy.deepcopy(inlier_planez), [self.equation[0], self.equation[1], self.equation[2]], [0, 0, 1])- np.asarray([0, 0, -self.equation[3]])
-        print("ESSE É PRA SER 3D")
-        print(inliers_plano)
+        #print("ESSE É PRA SER 3D")
+        #print(inliers_plano)
         dd_plano = np.delete(inliers_plano, 2, 1)
-        print(dd_plano)
+        #print(dd_plano)
         hull_points = qhull2D(dd_plano)
         hull_points = hull_points[::-1]
         (rot_angle, area, width, height, center_point, corner_points) = minBoundingRect(hull_points)
-        print("PONTOS: ", corner_points)
+        #print("PONTOS: ", corner_points)
         p = np.vstack((np.asarray(corner_points), np.asarray(center_point)))
-        print(p)
+        #print(p)
+
 
         ddd_plano= np.c_[ p, np.zeros(p.shape[0]) ] + np.asarray([0, 0, -self.equation[3]])
-        print("COM ZE ZERO ", ddd_plano)
+        #print("COM ZE ZERO ", ddd_plano)
         inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
-        print("BACK TO NORMAL: ", inliers_plano_desrotacionado)
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(inliers_plano_desrotacionado)
+        #print("BACK TO NORMAL: ", inliers_plano_desrotacionado)
+
+        center_point = np.asarray([center_point[0], center_point[1], 0])
+        print("CARALHO FUNCIONA",center_point)
+        dep = 0.1
+        mesh_box = o3d.geometry.TriangleMesh.create_box(width=width, height=height, depth=dep)
+        mesh_box = mesh_box.translate(np.asarray([-width/2, -height/2, -dep/2]))
+        mesh_box = mesh_box.rotate(aux.get_rotation_matrix_bti([0, 0, rot_angle]), center=np.asarray([0, 0, 0]))
+        mesh_box.compute_vertex_normals()
+        mesh_box.paint_uniform_color(self.color)
+        # center the box on the frame
+        # move to the plane location
+        mesh_box = mesh_box.translate(np.asarray(center_point))
+        mesh_box = mesh_box.translate(np.asarray([0, 0, -self.equation[3]]))
+        print("ANGULO: ",rot_angle)
+        
+
+        #mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
+        #o3d.visualization.draw_geometries([mesh_frame, mesh_box])
+        mesh_box = mesh_box.rotate(aux.get_rotationMatrix_from_vectors([0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]]), center=np.asarray([0, 0, 0]))
+
+        #pcd = o3d.geometry.PointCloud()
+        #pcd.points = o3d.utility.Vector3dVector(inliers_plano_desrotacionado)
         # pcd.voxel_down_sample(voxel_size=0.1)
-        pcd.paint_uniform_color(self.color)
+        #pcd.paint_uniform_color(self.color)
         #obb = pcd.get_oriented_bounding_box()
         #obb.color = (self.color[0], self.color[1], self.color[2])
         # estimate radius for rolling ball
-        #o3d.visualization.draw_geometries([pcd])
-        return pcd
+        #o3d.visualization.draw_geometries([pcd, mesh_box])
+        return mesh_box
 
 
     def append_plane(self, points):
