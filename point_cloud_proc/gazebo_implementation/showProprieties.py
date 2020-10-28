@@ -16,7 +16,7 @@ def showGUI(prop):
     color_list = []
     for key in prop: # key of proprety
         if(isinstance(prop[key], list)): # if is a list
-            if((key == "planes") or (key =="cylinders") or (key =="secundaryplanes")): # we need to load more if it is plane or cylinder
+            if((key == "planes") or (key =="cylinders") or (key =="secundaryplanes") or key =="cuboids"): # we need to load more if it is plane or cylinder
                 arv = tree.insert("", 1, text=key, open=True) # add major tree primitive division
                 for o in range(len(prop[key])): # Repeat for every object
                     colorzinha = prop[key][o]["color"]

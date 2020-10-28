@@ -180,3 +180,36 @@ def distance_from_points_to_plane(p, plane_eq):
 
     dist_pt = (plane_eq[0]*p[:,0]+plane_eq[1]*p[:, 1]+plane_eq[2]*p[:, 2]+plane_eq[3])/np.sqrt(plane_eq[0]**2+plane_eq[1]**2+plane_eq[2]**2)
     return dist_pt
+
+
+def distance_from_two_lines(e1, e2, r1, r2):
+    # e1, e2 = Direction vector
+    # r1, r2 = Point where the line passes through
+
+    # Find the unit vector perpendicular to both lines
+    n = np.cross(e1, e2)
+    n /= np.linalg.norm(n)
+
+    # Calculate distance
+    d = np.dot(n, r1 - r2)
+
+    return d
+
+def get_point_between_two_lines(e1, e2, r1, r2):
+    # e1, e2 = Direction vector
+    # r1, r2 = Point where the line passes through
+
+    # Find the unit vector perpendicular to both lines
+    n = np.cross(e1, e2)
+    n /= np.linalg.norm(n)
+
+    # Calculate distance
+    d = np.dot(n, r1 - r2)
+
+    RHS = r1 - r2
+    LHS = np.array([e1, -e2, n]).T
+    res = np.linalg.solve(LHS, RHS)
+    q1 = r1-res[0]*e1
+    print(np.linalg.solve(LHS, RHS))
+
+    return q1

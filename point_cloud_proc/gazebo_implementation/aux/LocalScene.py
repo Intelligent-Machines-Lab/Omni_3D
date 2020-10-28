@@ -72,14 +72,14 @@ class LocalScene:
             points = np.asarray(outlier_cloud.points)
             
             p = Plane()
-            best_eq, best_inliers = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=500)
+            best_eq, best_inliers = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=400)
             qtn_inliers = best_inliers.shape[0]
             if(qtn_inliers < int(0.1*self.npontos)):
                 break
             out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
             points = np.asarray(out.points)
             if(points.shape[0] < int(0.004*self.npontos)):
-                 break
+                break
             outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
             p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
             self.mainPlanes.append(p)
@@ -227,7 +227,7 @@ class LocalScene:
                     points = np.asarray(outlier_cloud.points)
                     
                     p = Plane()
-                    best_eq, best_inliers = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=500)
+                    best_eq, best_inliers = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=400)
                     qtn_inliers = np.asarray(best_inliers).shape[0]
                     if(qtn_inliers < int(0.0005*self.npontos)):
                         break

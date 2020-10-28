@@ -68,63 +68,49 @@ class Plane:
         self.inliersId = best_inliers
         self.equation = best_eq
         self.centroid = np.mean(self.inliers, axis=0)
+
+        if(self.equation):
+            self.update_geometry(self.inliers)
+
         return best_eq, best_inliers
 
     def move(self, rotMatrix=[[1,0,0],[0, 1, 0],[0, 0, 1]], tranlation=[0, 0, 0]):
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
+        self.points_main = np.dot(self.points_main, rotMatrix.T) + tranlation
         vec = np.dot(rotMatrix, [self.equation[0], self.equation[1], self.equation[2]]) #+ tranlation
         self.centroid = np.mean(self.inliers, axis=0)
         #d = self.equation[3] + np.dot(vec, tranlation)
         d = -np.sum(np.multiply(vec, self.centroid))
         self.equation = [vec[0], vec[1], vec[2], d]
+        self.update_geometry(self.points_main)
+
+
+
 
     def getProrieties(self):
-        return {"equation": self.equation,"nPoints":self.inliers.shape[0], "color": self.color, "centroid":self.centroid}
+        return {"equation": self.equation,"nPoints":self.inliers.shape[0], "color": self.color, "centroid":self.centroid,
+                "height": self.height, "width": self.width}
 
     def get_height(self, ground_normal):
-        pts_Z = aux.rodrigues_rot(self.inliers, ground_normal, [0,0,1])
-        center_Z = aux.rodrigues_rot(self.centroid, ground_normal, [0,0,1])[0]
+        pts_Z = aux.rodrigues_rot(self.points_main, ground_normal, [0,0,1])
+        center_Z = aux.rodrigues_rot(self.points_main[4], ground_normal, [0,0,1])[0]
         centered_pts_Z = pts_Z[:, 2] - center_Z[2]
         height = np.max(centered_pts_Z) - np.min(centered_pts_Z)
         return height
 
 
     def get_geometry(self):
-        #print(self.inliers)
-        #print("EQUACAO ", self.equation)
-        inlier_planez = self.inliers 
-        #print(inlier_planez)
-        inliers_plano = aux.rodrigues_rot(copy.deepcopy(inlier_planez), [self.equation[0], self.equation[1], self.equation[2]], [0, 0, 1])- np.asarray([0, 0, -self.equation[3]])
-        #print("ESSE É PRA SER 3D")
-        #print(inliers_plano)
-        dd_plano = np.delete(inliers_plano, 2, 1)
-        #print(dd_plano)
-        hull_points = qhull2D(dd_plano)
-        hull_points = hull_points[::-1]
-        (rot_angle, area, width, height, center_point, corner_points) = minBoundingRect(hull_points)
-        #print("PONTOS: ", corner_points)
-        p = np.vstack((np.asarray(corner_points), np.asarray(center_point)))
-        #print(p)
-
-
-        ddd_plano= np.c_[ p, np.zeros(p.shape[0]) ] + np.asarray([0, 0, -self.equation[3]])
-        #print("COM ZE ZERO ", ddd_plano)
-        inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
-        #print("BACK TO NORMAL: ", inliers_plano_desrotacionado)
-
-        center_point = np.asarray([center_point[0], center_point[1], 0])
-        print("CARALHO FUNCIONA",center_point)
+        center_point = np.asarray([self.center2d[0], self.center2d[1], 0])
         dep = 0.1
-        mesh_box = o3d.geometry.TriangleMesh.create_box(width=width, height=height, depth=dep)
-        mesh_box = mesh_box.translate(np.asarray([-width/2, -height/2, -dep/2]))
-        mesh_box = mesh_box.rotate(aux.get_rotation_matrix_bti([0, 0, rot_angle]), center=np.asarray([0, 0, 0]))
+        mesh_box = o3d.geometry.TriangleMesh.create_box(width=self.width, height=self.height, depth=dep)
+        mesh_box = mesh_box.translate(np.asarray([-self.width/2, -self.height/2, -dep/2]))
+        mesh_box = mesh_box.rotate(aux.get_rotation_matrix_bti([0, 0, self.rot_angle]), center=np.asarray([0, 0, 0]))
         mesh_box.compute_vertex_normals()
         mesh_box.paint_uniform_color(self.color)
         # center the box on the frame
         # move to the plane location
         mesh_box = mesh_box.translate(np.asarray(center_point))
         mesh_box = mesh_box.translate(np.asarray([0, 0, -self.equation[3]]))
-        print("ANGULO: ",rot_angle)
         
 
         #mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
@@ -144,21 +130,35 @@ class Plane:
 
     def append_plane(self, points):
         #print("Shape antes de append: "+str(self.inliers.shape[0]))
-        self.inliers = np.append(self.inliers, points, axis=0)
+        self.points_main = np.append(self.points_main, points, axis=0)
         #print("Shape depois de append: "+str(self.inliers.shape[0]))
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(self.inliers)
-        pcd.paint_uniform_color(self.color)
-        #print("Shape depois de append 2: "+str(np.asarray(pcd.points).shape[0]))
-        pcd = pcd.voxel_down_sample(voxel_size=0.2)
-        #print("Shape depois de append depois do downsampling: "+str(np.asarray(pcd.points).shape[0]))
-        pcd.paint_uniform_color(self.color)
-        self.inliers = np.array(pcd.points)
-        self.centroid = np.mean(self.inliers, axis=0)
+        self.update_geometry(self.points_main)
+        self.centroid = np.mean(self.points_main, axis=0)
 
 
         
+    def update_geometry(self, points):
+        # Encontra parâmetros do semi-plano
+        inlier_planez = points
 
+        # Encontra representação 2d da projeção na normal do plano
+        inliers_plano = aux.rodrigues_rot(copy.deepcopy(inlier_planez), [self.equation[0], self.equation[1], self.equation[2]], [0, 0, 1])- np.asarray([0, 0, -self.equation[3]])
+        dd_plano = np.delete(inliers_plano, 2, 1)
+
+        # Fita retângulo de menor área
+        hull_points = qhull2D(dd_plano)
+        hull_points = hull_points[::-1]
+        (rot_angle, area, width, height, center_point, corner_points) = minBoundingRect(hull_points)
+
+        # Volta pro espaço 3D
+        p = np.vstack((np.asarray(corner_points), np.asarray(center_point)))
+        ddd_plano= np.c_[ p, np.zeros(p.shape[0]) ] + np.asarray([0, 0, -self.equation[3]])
+        inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
+        self.center2d = center_point
+        self.rot_angle = rot_angle
+        self.width = width
+        self.height = height
+        self.points_main = inliers_plano_desrotacionado
 
 
 
