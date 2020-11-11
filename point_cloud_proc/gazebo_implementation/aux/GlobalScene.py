@@ -30,6 +30,7 @@ class GlobalScene:
         self.fet_geo = []
 
         self.ground_normal = []
+        self.ground_equation = []
         self.lc_atual = []
         self.propwindow = []
 
@@ -105,7 +106,7 @@ class GlobalScene:
     #     vis.destroy_window()
 
 
-    def add_pcd(self, pcd, commands_odom_linear, commands_odom_angular, duration):
+    def add_pcd(self, pcd, commands_odom_linear, commands_odom_angular, duration, i):
         last_loc = np.asarray([0, 0, 0])
         last_angulo = np.asarray([0, 0, 0])
         if not len(self.scenes_translation) == 0:
@@ -149,45 +150,57 @@ class GlobalScene:
         
         #Ransac total
         ls.findMainPlanes()
-        ls.defineGroundNormal()
-        o3d.visualization.draw_geometries(ls.getMainPlanes())
+        ls.defineGroundNormal(ground_eq_reserva=self.ground_equation)
+        #o3d.visualization.draw_geometries(ls.getMainPlanes())
         #ls.showNotPlanes()
         ls.clusterizeObjects()
         #ls.showObjects()
         ls.fitCylinder()
         ls.findSecundaryPlanes()
         self.ground_normal = ls.groundNormal
+        self.ground_equation = ls.groundEquation
+        print("GND EQUATION: ", self.ground_equation)
 
 
         scene_features=[]
         
         for x in range(len(ls.mainPlanes)):
             ls.mainPlanes[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.mainPlanes[x], ground_normal=self.ground_normal)
-            scene_features.append(gfeature)
-            
-
-        for x in range(len(ls.mainCylinders)):
-            ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.mainCylinders[x], ground_normal=self.ground_normal)
+            gfeature = Generic_feature(ls.mainPlanes[x], ground_equation=self.ground_equation)
             scene_features.append(gfeature)
 
 
         for x in range(len(ls.secundaryPlanes)):
             ls.secundaryPlanes[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.secundaryPlanes[x], ground_normal=self.ground_normal)
+            gfeature = Generic_feature(ls.secundaryPlanes[x], ground_equation=self.ground_equation)
+            scene_features.append(gfeature)
+
+        for x in range(len(ls.mainCylinders)):
+            ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+            gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
             scene_features.append(gfeature)
 
         if(len(self.features_objects)>0):
             for i_cena in range(len(scene_features)):
                 ja_existe = False
+                list_to_delete = []
                 for i_global in range(len(self.features_objects)):
                     if(self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena])):
                         ja_existe = True
-                        break
+                        if isinstance(scene_features[i_cena].feat,Cylinder) and isinstance(self.features_objects[i_global].feat,Plane):
+                            # Remove all planes that can be part of this cylinder
+                            self.features_objects[i_global].feat.color = scene_features[i_cena].feat.color
+                            list_to_delete.append(self.features_objects[i_global])
+                            #self.features_objects.append(scene_features[i_cena])
+                        #break
                 if(not ja_existe):
                     self.features_objects.append(scene_features[i_cena])
-                    #self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
+                else:
+                    if isinstance(scene_features[i_cena].feat,Cylinder) and list_to_delete:
+                    # If already exists, delete all correspondences
+                        self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
+                        self.features_objects.append(scene_features[i_cena])
+                    
         else:
             for i_cena in range(len(scene_features)):
                 self.features_objects.append(scene_features[i_cena])
@@ -195,77 +208,99 @@ class GlobalScene:
         self.fet_geo = []
         # Map cleaning and feature merge
         # Detect cuboid
-        list_to_delete = []
-        for ob in self.features_objects:
-            if isinstance(ob.feat, Plane):
-                altura1 = ob.feat.get_height(self.ground_normal)
-                if altura1 < 0.1:
-                    continue
-                for ob2 in self.features_objects:
-                    if isinstance(ob2.feat, Plane):
-                        if (np.linalg.norm(ob2.feat.centroid - ob2.feat.centroid) > 3):
-                            continue
+        found_cuboid = True
+        while found_cuboid:
+            list_to_delete = []
+            found_cuboid = False
+            for ob in self.features_objects:
+                if isinstance(ob.feat, Plane):
+                    altura1 = ob.feat.get_height(self.ground_normal)
+                    if altura1 > 1.5:
+                        continue
+                    if altura1 < 0.1:
+                        continue
+                    for ob2 in self.features_objects:
+                        if isinstance(ob2.feat, Plane):
+                            if (np.linalg.norm(ob2.feat.centroid - ob2.feat.centroid) > 3):
+                                continue
 
-                        #altura2 = ob2.feat.get_height(self.ground_normal)
-                        # For a cuboid, height must be similar for the box's walls
-                        if(np.abs(ob2.feat.width-ob.feat.width) < 0.0001):
-                            # plane1 = plane2
-                            continue
-                        #print("Comparando alturas: ", altura1, " - ", altura2, " - diff: ",np.abs(altura1-altura2), " - Margem: ",((altura1+altura2)/2)*0.2)
+                            altura2 = ob2.feat.get_height(self.ground_normal)
+                            if altura2 > 1.5:
+                                continue
+                            # For a cuboid, height must be similar for the box's walls
+                            if(np.abs(ob2.feat.width-ob.feat.width) < 0.0001):
+                                # plane1 = plane2
+                                continue
+                            #print("Comparando alturas: ", altura1, " - ", altura2, " - diff: ",np.abs(altura1-altura2), " - Margem: ",((altura1+altura2)/2)*0.2)
 
-                        #if(np.abs(altura1-altura2)<((altura1+altura2)/2)*0.2):
-                        normal1 = np.asarray([ob.feat.equation[0],ob.feat.equation[1],ob.feat.equation[2]])
-                        normal2 = np.asarray([ob2.feat.equation[0],ob2.feat.equation[1],ob2.feat.equation[2]])
-                        perpendicularity = np.cross(normal1,normal2)
-                        # Planes are perpndiculars
-                        if(np.linalg.norm(perpendicularity) > 0.9):
-                            # Lets search for another plane with a similar normal
-                            for ob3 in self.features_objects:
-                                if isinstance(ob3.feat, Plane):
-                                    if (np.linalg.norm(ob3.feat.centroid - ob2.feat.centroid) > 3):
-                                        continue
-                                    if (np.linalg.norm(ob3.feat.centroid - ob.feat.centroid) > 3):
-                                        continue
-                                    normal3 = np.asarray([ob3.feat.equation[0],ob3.feat.equation[1],ob3.feat.equation[2]])
-                                    if(np.linalg.norm(perpendicularity - normal3) < 0.3):
-                                        d1 = distance_from_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
-                                        d2 = distance_from_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
-                                        print("TESTOU AQUI DENTRO - ", d1, " - ", d2)
-                                        if(np.linalg.norm(d1) < 0.2 and np.linalg.norm(d2) < 0.2  ):
-                                            ob2.feat.color = ob.feat.color
-                                            ob3.feat.color = ob.feat.color
-                                            #encontro = get_point_between_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
-                                            #encontro2 = get_point_between_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
-                                            cub = Cuboid(ob.feat, ob2.feat, ob3.feat, self.ground_normal)
-                                            g = Generic_feature(cub, self.ground_normal)
-                                            self.features_objects.append(g)
-                                            list_to_delete.append(ob)
-                                            list_to_delete.append(ob2)
-                                            list_to_delete.append(ob3)
-                                            #print("ENCONTRO: ",encontro)
-                                            #pt = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0]).translate(encontro)
-                                            #pt2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0]).translate(encontro2)
-                                            #self.fet_geo.append(pt)
-                                            #self.fet_geo.append(pt2)
+                            #if(np.abs(altura1-altura2)<((altura1+altura2)/2)*0.2):
+                            normal1 = np.asarray([ob.feat.equation[0],ob.feat.equation[1],ob.feat.equation[2]])
+                            normal2 = np.asarray([ob2.feat.equation[0],ob2.feat.equation[1],ob2.feat.equation[2]])
+                            perpendicularity = np.cross(normal1,normal2)
+                            # Planes are perpndiculars
+                            if(np.linalg.norm(perpendicularity) > 0.9):
+                                # Lets search for another plane with a similar normal
+                                for ob3 in self.features_objects:
+                                    if isinstance(ob3.feat, Plane):
+                                        altura3 = ob3.feat.get_height(self.ground_normal)
+                                        if altura2 > 1.5:
+                                            continue
+                                        if (np.linalg.norm(ob3.feat.centroid - ob2.feat.centroid) > 3):
+                                            continue
+                                        if (np.linalg.norm(ob3.feat.centroid - ob.feat.centroid) > 3):
+                                            continue
+                                        normal3 = np.asarray([ob3.feat.equation[0],ob3.feat.equation[1],ob3.feat.equation[2]])
+                                        if(np.linalg.norm(perpendicularity - normal3) < 0.3):
+                                            d1 = distance_from_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
+                                            d2 = distance_from_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
+                                            print("TESTOU AQUI DENTRO - ", d1, " - ", d2)
+                                            meandim = np.mean([ob.feat.width, ob.feat.height, ob2.feat.width, ob2.feat.height, ob3.feat.width, ob3.feat.height])
+                                            if(np.linalg.norm(d1) < meandim and np.linalg.norm(d2) < meandim  ):
+                                                cub = Cuboid(ob.feat, ob2.feat, ob3.feat, self.ground_normal)
+                                                if(cub.width*cub.height*cub.depth < 1.5**3):
+                                                    ob2.feat.color = ob.feat.color
+                                                    ob3.feat.color = ob.feat.color
+                                                    #encontro = get_point_between_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
+                                                    #encontro2 = get_point_between_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
+                                                    
+                                                    g = Generic_feature(cub, self.ground_equation)
+                                                    for ob_plane_clear in self.features_objects:
+                                                        if isinstance(ob_plane_clear.feat, Plane):
+                                                            if(g.verifyCorrespondence(ob_plane_clear)):
+                                                                list_to_delete.append(ob_plane_clear)
+                                                    self.features_objects.append(g)
+                                                    
+                                                    # list_to_delete.append(ob)
+                                                    # list_to_delete.append(ob2)
+                                                    # list_to_delete.append(ob3)
+                                                    # TODO: Fazer correspondência entre plano e cubo
+                                                    # TODO: Verificar correspondência de todas as features planares 
+                                                    break
+                                                else:
+                                                    continue
+                        if list_to_delete:
+                            break
+                if list_to_delete:
+                    break
 
+            # Delete merged objects
+            self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
+            if list_to_delete:
 
-                        # aux.distance_from_two_vectors(v1, v2, c1, c2)
-                        # biggerDim = [ob.feat.width, ob.]
-                        # ob.feat.centroid-
-        # Delete merged objects
-        self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
+                found_cuboid = True
 
         self.scenes_rotation.append(atual_angulo)
         self.scenes_translation.append(atual_loc)
         #self.fet_geo = []
         for ob in self.features_objects:
-            #if(ob.running_geo["total"] > 2):
-            self.fet_geo.append(ob.feat.get_geometry())
+            if(ob.running_geo["total"] > 2):
+                self.fet_geo.append(ob.feat.get_geometry())
 
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
+        if(i >=3):
+            threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
 
 
         f = open('feat.pckl', 'wb')

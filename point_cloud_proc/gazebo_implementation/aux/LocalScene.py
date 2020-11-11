@@ -22,10 +22,11 @@ class LocalScene:
         self.mainCylinders = [] # List of Cylinder
 
         self.groundNormal = [] # Vector normal to the ground
+        self.groundEquation = []
         self.groundID = 0
 
         self.circulation_cylinder = 0.018
-        self.percentage_std_radius = 0.11
+        self.percentage_std_radius = 0.08
 
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
@@ -72,7 +73,7 @@ class LocalScene:
             points = np.asarray(outlier_cloud.points)
             
             p = Plane()
-            best_eq, best_inliers = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=400)
+            best_eq, best_inliers, valid = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=400)
             qtn_inliers = best_inliers.shape[0]
             if(qtn_inliers < int(0.1*self.npontos)):
                 break
@@ -81,8 +82,9 @@ class LocalScene:
             if(points.shape[0] < int(0.004*self.npontos)):
                 break
             outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
-            p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
-            self.mainPlanes.append(p)
+            if(valid):
+                p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
+                self.mainPlanes.append(p)
             if(self.filter_radius):
                 cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.12)
                 #display_inlier_outlier(outlier_cloud, ind)
@@ -109,7 +111,7 @@ class LocalScene:
             mesh.rotate(get_rotationMatrix_from_vectors([0, 0, 1], self.groundNormal), center=(0, 0, 0)).translate(centerPCD)
             pointCloudList.append(mesh)
         return pointCloudList
-        o3d.visualization.draw_geometries(pointCloudList)
+        #o3d.visualization.draw_geometries(pointCloudList)
 
     def showNotPlanes(self):
         o3d.visualization.draw_geometries([self.pointCloud_notMainPlanes])
@@ -119,7 +121,7 @@ class LocalScene:
 
 
 
-    def defineGroundNormal(self):
+    def defineGroundNormal(self, ground_eq_reserva = [0, 0, 0, 0]):
         normalCandidatesY = []
         for i in range(len(self.mainPlanes)):
             normalCandidatesY.append(abs(self.mainPlanes[i].equation[2]))
@@ -127,9 +129,16 @@ class LocalScene:
         idMax = normalCandidatesY.index(valMax)
         if(valMax > 0.85):
             self.groundNormal = np.asarray([self.mainPlanes[idMax].equation[0], self.mainPlanes[idMax].equation[1], self.mainPlanes[idMax].equation[2]])
+            self.groundEquation = np.asarray(self.mainPlanes[idMax].equation)
             if(self.groundNormal[2] > 0):
                 self.groundNormal = -self.groundNormal
+                self.groundEquation = -self.groundEquation
             self.groundID = idMax
+        else:
+            print("Tendo que usar equação reserva do chão: ", self.groundEquation)
+            self.groundEquation = np.asarray(ground_eq_reserva)
+            self.groundNormal = np.asarray([self.groundEquation[0], self.groundEquation[1], self.groundEquation[2]])
+
         print("Ground normal: "+str(self.groundNormal))
 
 
@@ -141,7 +150,7 @@ class LocalScene:
         max_label = labels.max()
         print(f"point cloud has {max_label + 1} clusters")
 
-        o3d.visualization.draw_geometries([filtered_not_planes])
+        #o3d.visualization.draw_geometries([filtered_not_planes])
         cluster_array = []
         for n_cluster in range(max_label+1):
             index_from_cluster = np.where(labels == n_cluster)[0]
@@ -198,7 +207,7 @@ class LocalScene:
     def showFeatures(self):
         feat = self.getMainPlanes()
         feat.extend(self.getCylinders(showPointCloud=False))
-        o3d.visualization.draw_geometries(feat)
+        #o3d.visualization.draw_geometries(feat)
 
     def getProprieties(self):
         vet_mainPlanes = []
@@ -227,16 +236,17 @@ class LocalScene:
                     points = np.asarray(outlier_cloud.points)
                     
                     p = Plane()
-                    best_eq, best_inliers = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=400)
+                    best_eq, best_inliers, valid = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=400)
                     qtn_inliers = np.asarray(best_inliers).shape[0]
                     if(qtn_inliers < int(0.0005*self.npontos)):
                         break
                     out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
                     points = np.asarray(out.points)
                     outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
-                    p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
-                    self.secundaryPlanes.append(p)
-                    removeIndexes.append(i_cyl)
+                    if(valid):
+                        p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
+                        self.secundaryPlanes.append(p)
+                        removeIndexes.append(i_cyl)
                     if(self.filter_radius):
                         cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.10)
                         display_inlier_outlier(outlier_cloud, ind)

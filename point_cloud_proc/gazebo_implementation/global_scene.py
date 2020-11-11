@@ -43,7 +43,8 @@ last_angz = df['ang_z'].values[0]
 # t.start()
 
 
-for i in range(nImages):
+for a in range(nImages):
+    i = a
     color_raw = o3d.io.read_image("gazebo_dataset/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image("gazebo_dataset/"+str(i)+"_depth.png")
     pcd = open_pointCloud_from_rgb_and_depth(
@@ -58,7 +59,7 @@ for i in range(nImages):
 
     #print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
 
-    gc.add_pcd(pcd, c_linear, c_angular, t_dur)
+    gc.add_pcd(pcd, c_linear, c_angular, t_dur, i)
 
     last_angx = df['ang_x'].values[i]
     last_angy = df['ang_y'].values[i]

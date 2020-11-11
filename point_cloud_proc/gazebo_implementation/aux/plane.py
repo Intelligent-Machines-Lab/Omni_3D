@@ -5,7 +5,7 @@ import copy
 from aux import *
 from aux.qhull_2d import *
 from aux.min_bounding_rect import *
-
+import matplotlib.pyplot as plt
 class Plane:
 
     def __init__(self):
@@ -23,6 +23,7 @@ class Plane:
         print(n_points)
         best_eq = []
         best_inliers = []
+        valid = False
 
         for it in range(maxIteration):
             # Samples 3 random points 
@@ -69,10 +70,61 @@ class Plane:
         self.equation = best_eq
         self.centroid = np.mean(self.inliers, axis=0)
 
-        if(self.equation):
-            self.update_geometry(self.inliers)
+        print("Plano tem esse número de pontos como inliers: ", self.inliers.shape[0])
+        if(int(self.inliers.shape[0]) > 2000):
 
-        return best_eq, best_inliers
+        #     pcd = o3d.geometry.PointCloud()
+        #     pcd.points = o3d.utility.Vector3dVector(self.inliers)
+        #     with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
+        #         labels = np.array(pcd.cluster_dbscan(eps=0.5, min_points=int(self.inliers.shape[0]/400), print_progress=False))
+
+        #     max_label = labels.max()
+        #     colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
+        #     colors[labels < 0] = 0
+        #     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
+        #     o3d.visualization.draw_geometries([pcd])
+        #     if(max_label > 1):
+        #         self.equation = []
+        #         self.best_inliers = []
+
+
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(self.inliers)
+            pcd = pcd.voxel_down_sample(voxel_size=0.1)
+            cl, ind = pcd.remove_statistical_outlier(nb_neighbors=50, std_ratio=0.1)
+            pcd = pcd.select_by_index(ind)
+            #aux.display_inlier_outlier(pcd, ind)
+            #aux.display_inlier_outlier(pcd, ind)
+            self.inliers = np.asarray(pcd.points)
+            #self.inliersId = ind
+            self.equation = best_eq
+            self.centroid = np.mean(self.inliers, axis=0)
+
+        if(self.equation):
+            centroid_pontos = np.mean(self.inliers, axis=0)
+            center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(self.inliers)
+            centroid_retangulo = np.mean(inliers_plano_desrotacionado, axis=0)
+            dimin = np.amin([width, height])
+            # pcd = o3d.geometry.PointCloud()
+            # pcd.points = o3d.utility.Vector3dVector(self.inliers)
+            # mesh_frame1 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).translate(centroid_pontos)
+            # mesh_frame2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).translate(centroid_retangulo)
+            # o3d.visualization.draw_geometries([mesh_frame1, mesh_frame2, pcd])
+            if(np.linalg.norm(centroid_pontos-centroid_retangulo)<dimin*0.3):
+                print("PLANO VÁLIDO")
+
+                self.center2d = center_point
+                self.rot_angle = rot_angle
+                self.width = width
+                self.height = height
+                self.points_main = inliers_plano_desrotacionado
+                self.centroid = np.mean(self.points_main, axis=0)
+                valid = True
+            else:
+                print("PLANO INVÁLIDO")
+                valid = False
+
+        return best_eq, best_inliers, valid
 
     def move(self, rotMatrix=[[1,0,0],[0, 1, 0],[0, 0, 1]], tranlation=[0, 0, 0]):
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
@@ -82,7 +134,13 @@ class Plane:
         #d = self.equation[3] + np.dot(vec, tranlation)
         d = -np.sum(np.multiply(vec, self.centroid))
         self.equation = [vec[0], vec[1], vec[2], d]
-        self.update_geometry(self.points_main)
+        center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(self.points_main)
+        self.center2d = center_point
+        self.rot_angle = rot_angle
+        self.width = width
+        self.height = height
+        self.points_main = inliers_plano_desrotacionado
+        self.centroid = np.mean(self.points_main, axis=0)
 
 
 
@@ -130,10 +188,27 @@ class Plane:
 
     def append_plane(self, points):
         #print("Shape antes de append: "+str(self.inliers.shape[0]))
-        self.points_main = np.append(self.points_main, points, axis=0)
-        #print("Shape depois de append: "+str(self.inliers.shape[0]))
-        self.update_geometry(self.points_main)
+        
+        # #print("Shape depois de append: "+str(self.inliers.shape[0]))
+        # centroid_pontos = np.mean(points, axis=0)
+        # center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(points)
+        # centroid_retangulo = np.mean(inliers_plano_desrotacionado, axis=0)
+
+
+        # dimin = np.amin([width, height])
+        # if(np.linalg.norm(centroid_pontos-centroid_retangulo)<dimin*0.1):
+
+        provisorio = copy.deepcopy(np.append(self.points_main, points, axis=0))
+        center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(provisorio)
+        self.center2d = center_point
+        self.rot_angle = rot_angle
+        self.width = width
+        self.height = height
+        self.points_main = inliers_plano_desrotacionado
         self.centroid = np.mean(self.points_main, axis=0)
+        return True
+        # else:
+        #     return False
 
 
         
@@ -154,11 +229,8 @@ class Plane:
         p = np.vstack((np.asarray(corner_points), np.asarray(center_point)))
         ddd_plano= np.c_[ p, np.zeros(p.shape[0]) ] + np.asarray([0, 0, -self.equation[3]])
         inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
-        self.center2d = center_point
-        self.rot_angle = rot_angle
-        self.width = width
-        self.height = height
-        self.points_main = inliers_plano_desrotacionado
+        return center_point, rot_angle, width, height, inliers_plano_desrotacionado
+
 
 
 
