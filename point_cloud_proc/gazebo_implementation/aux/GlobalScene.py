@@ -299,7 +299,7 @@ class GlobalScene:
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=3):
+        if(i >=50):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
 
 
