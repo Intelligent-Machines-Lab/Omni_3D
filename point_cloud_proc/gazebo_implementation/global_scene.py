@@ -18,11 +18,11 @@ import threading #thread module imported
 import traceback
 import _thread
 
+nomepasta = "gazebo_dataset3"
+list_depth = sorted(glob.glob(nomepasta+"/*_depth.png"))
+list_rgb = sorted(glob.glob(nomepasta+"/*_rgb.png"))
 
-list_depth = sorted(glob.glob("gazebo_dataset/*_depth.png"))
-list_rgb = sorted(glob.glob("gazebo_dataset/*_rgb.png"))
-
-df = pd.read_csv("gazebo_dataset/data.txt")
+df = pd.read_csv(nomepasta+"/data.txt")
 df.columns =[col.strip() for col in df.columns]
 
 
@@ -44,9 +44,9 @@ last_angz = df['ang_z'].values[0]
 
 
 for a in range(nImages):
-    i = a
-    color_raw = o3d.io.read_image("gazebo_dataset/"+str(i)+"_rgb.png")
-    depth_raw = o3d.io.read_image("gazebo_dataset/"+str(i)+"_depth.png")
+    i = a+0
+    color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
+    depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
     pcd = open_pointCloud_from_rgb_and_depth(
         color_raw, depth_raw, meters_trunc=100, showImages = False)
     #o3d.visualization.draw_geometries([pcd])
@@ -54,11 +54,16 @@ for a in range(nImages):
     t_dur = df['t_command'].values[i]
     c_linear = [df['c_linear_x'].values[i],
                 df['c_linear_y'].values[i], df['c_linear_z'].values[i]]
-    c_angular = [df['ang_x'].values[i]-last_angx, df['ang_y'].values[i]
-                 - last_angy, df['ang_z'].values[i]-last_angz]/t_dur
+
+    diff_angx = np.arctan2(np.sin(df['ang_x'].values[i]-last_angx), np.cos(df['ang_x'].values[i]-last_angx))
+    diff_angy = np.arctan2(np.sin(df['ang_y'].values[i]-last_angy), np.cos(df['ang_y'].values[i]-last_angy))
+    diff_angz = np.arctan2(np.sin(df['ang_z'].values[i]-last_angz), np.cos(df['ang_z'].values[i]-last_angz))
+    c_angular = [diff_angx, diff_angy, diff_angz]/t_dur
 
     #print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
-
+    print("----------")
+    print("Foto ", i)
+    print("----------")
     gc.add_pcd(pcd, c_linear, c_angular, t_dur, i)
 
     last_angx = df['ang_x'].values[i]

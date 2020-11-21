@@ -20,7 +20,7 @@ class Plane:
     def findPlane(self, pts, thresh=0.05, minPoints=100, maxIteration=1000):
         n_points = pts.shape[0]
         self.nPoints = n_points
-        print(n_points)
+        #print(n_points)
         best_eq = []
         best_inliers = []
         valid = False
@@ -70,7 +70,7 @@ class Plane:
         self.equation = best_eq
         self.centroid = np.mean(self.inliers, axis=0)
 
-        print("Plano tem esse número de pontos como inliers: ", self.inliers.shape[0])
+        #print("Plano tem esse número de pontos como inliers: ", self.inliers.shape[0])
         if(int(self.inliers.shape[0]) > 2000):
 
         #     pcd = o3d.geometry.PointCloud()
@@ -111,7 +111,7 @@ class Plane:
             # mesh_frame2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).translate(centroid_retangulo)
             # o3d.visualization.draw_geometries([mesh_frame1, mesh_frame2, pcd])
             if(np.linalg.norm(centroid_pontos-centroid_retangulo)<dimin*0.3):
-                print("PLANO VÁLIDO")
+                #print("PLANO VÁLIDO")
 
                 self.center2d = center_point
                 self.rot_angle = rot_angle
@@ -121,7 +121,7 @@ class Plane:
                 self.centroid = np.mean(self.points_main, axis=0)
                 valid = True
             else:
-                print("PLANO INVÁLIDO")
+                #print("PLANO INVÁLIDO")
                 valid = False
 
         return best_eq, best_inliers, valid

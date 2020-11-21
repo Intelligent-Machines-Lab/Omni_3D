@@ -102,12 +102,12 @@ class LocalScene:
             
             pointCloudList.append(pcd.paint_uniform_color(self.mainPlanes[i].color))
             
-        if(self.groundNormal != []):
+        if(self.groundNormal and not self.groundID == -1):
             mesh = o3d.geometry.TriangleMesh.create_coordinate_frame(origin=[0, 0, 0], size=0.5)
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(self.mainPlanes[self.groundID].inliers)
             centerPCD = pcd.get_center()
-            #print(centerPCD)
+            print(self.groundNormal)
             mesh.rotate(get_rotationMatrix_from_vectors([0, 0, 1], self.groundNormal), center=(0, 0, 0)).translate(centerPCD)
             pointCloudList.append(mesh)
         return pointCloudList
@@ -125,20 +125,29 @@ class LocalScene:
         normalCandidatesY = []
         for i in range(len(self.mainPlanes)):
             normalCandidatesY.append(abs(self.mainPlanes[i].equation[2]))
-        valMax = max(normalCandidatesY)
-        idMax = normalCandidatesY.index(valMax)
-        if(valMax > 0.85):
-            self.groundNormal = np.asarray([self.mainPlanes[idMax].equation[0], self.mainPlanes[idMax].equation[1], self.mainPlanes[idMax].equation[2]])
-            self.groundEquation = np.asarray(self.mainPlanes[idMax].equation)
-            if(self.groundNormal[2] > 0):
-                self.groundNormal = -self.groundNormal
-                self.groundEquation = -self.groundEquation
-            self.groundID = idMax
+            print("Equacaodoplano ",self.mainPlanes[i].equation)
+        if normalCandidatesY:
+            valMax = max(normalCandidatesY)
+            idMax = normalCandidatesY.index(valMax)
+            if(valMax > 0.95):
+                self.groundNormal = np.asarray([self.mainPlanes[idMax].equation[0], self.mainPlanes[idMax].equation[1], self.mainPlanes[idMax].equation[2]])
+                self.groundEquation = np.asarray(self.mainPlanes[idMax].equation)
+                if(self.groundNormal[2] > 0):
+                    self.groundNormal = -self.groundNormal
+                    self.groundEquation = -self.groundEquation
+                self.groundID = idMax
+            else:
+                print("Tendo que usar equação reserva do chão: ", self.groundEquation)
+                self.groundEquation = np.asarray(ground_eq_reserva)
+                self.groundNormal = np.asarray([self.groundEquation[0], self.groundEquation[1], self.groundEquation[2]])
+                self.groundID = -1
         else:
             print("Tendo que usar equação reserva do chão: ", self.groundEquation)
             self.groundEquation = np.asarray(ground_eq_reserva)
             self.groundNormal = np.asarray([self.groundEquation[0], self.groundEquation[1], self.groundEquation[2]])
-
+            self.groundID = -1
+        self.groundNormal = self.groundNormal.tolist()
+        self.groundEquation = self.groundEquation.tolist()
         print("Ground normal: "+str(self.groundNormal))
 
 
@@ -166,7 +175,7 @@ class LocalScene:
             points = np.asarray(self.pointCloud_objects[i_obj].points)
             cyl.find(points, thresh=0.05, maxIteration=1000, forceAxisVector = self.groundNormal, useRANSAC = False)
             cyl.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
-            cyl.calculatePlanification(showNormal=False)
+            #cyl.calculatePlanification(showNormal=False)
             self.mainCylinders.append(cyl)
 
 
@@ -182,7 +191,7 @@ class LocalScene:
                 mesh_cylinder = mesh_cylinder.translate((self.mainCylinders[i_obj].center[0], self.mainCylinders[i_obj].center[1], self.mainCylinders[i_obj].center[2]))
                 
             # if(self.mainCylinders[i_obj].circulation_mean > self.circulation_cylinder):
-            if(self.mainCylinders[i_obj].radius_std/self.mainCylinders[i_obj].radius_mean < self.percentage_std_radius):
+            if(self.is_cylinder(self.mainCylinders[i_obj])):
                 cymesh.append(mesh_cylinder)
                 obb = cymesh[-1].get_oriented_bounding_box()
                 obb.color = (0,1,0)
@@ -202,6 +211,13 @@ class LocalScene:
             obcylinder = cymesh
         return obcylinder
         #o3d.visualization.draw_geometries(obcylinder)
+
+    def is_cylinder(self, cylinder):
+        cylinder_condition = True
+        cylinder_condition = cylinder_condition and (cylinder.radius < 1.5)
+        cylinder_condition = cylinder_condition and (cylinder.radius_std/cylinder.radius_mean < self.percentage_std_radius)
+        return cylinder_condition
+            
 
 
     def showFeatures(self):
@@ -229,7 +245,7 @@ class LocalScene:
         removeIndexes = []
         for i_cyl in range(len(self.mainCylinders)):
             # if(self.mainCylinders[i_cyl].circulation_mean < self.circulation_cylinder):
-            if(self.mainCylinders[i_cyl].radius_std/self.mainCylinders[i_cyl].radius_mean > self.percentage_std_radius):
+            if(not self.is_cylinder(self.mainCylinders[i_cyl])):
                 outlier_cloud = copy.deepcopy(self.pointCloud_objects[i_cyl])
                 while(True):
                     # Ransac planar
@@ -252,7 +268,9 @@ class LocalScene:
                         display_inlier_outlier(outlier_cloud, ind)
                         outlier_cloud = outlier_cloud.select_by_index(ind)
                     if(np.asarray(outlier_cloud.points).shape[0] < 10):
-                         break
+                        break
+            #else:
+                #removeIndexes.append(i_cyl)
         self.mainCylinders = [i for j, i in enumerate(self.mainCylinders) if j not in removeIndexes]
 
     def getSecundaryPlanes(self):

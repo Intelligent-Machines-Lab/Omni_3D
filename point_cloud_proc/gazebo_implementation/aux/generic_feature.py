@@ -33,8 +33,8 @@ class Generic_feature:
                 else:
 
                     d = aux.distance_from_points_to_plane( compare_feat.feat.centroid, self.feat.equation)
-                    print("DISTANCIA DO PLANO PRA CENTROIDE DO OUTRO PLANO: "+str(d))
-                    if np.abs(d[0]) > 0.2:
+                    #print("DISTANCIA DO PLANO PRA CENTROIDE DO OUTRO PLANO: "+str(d))
+                    if np.abs(d[0]) > 0.5:
                         return False
                     else:
                         d_maior = np.amax([self.feat.width,self.feat.height, compare_feat.feat.width,compare_feat.feat.height])
@@ -54,30 +54,30 @@ class Generic_feature:
                 pla = self.feat
                 plane_height_cylinder_normal = pla.get_height(cyl.normal)
                 cylinder_height = cyl.height[1]-cyl.height[0]
-                print("Altura plano")
-                print(plane_height_cylinder_normal)
-                print("Altura cilindro")
-                print(cylinder_height)
+                #print("Altura plano")
+                #print(plane_height_cylinder_normal)
+                #print("Altura cilindro")
+                #print(cylinder_height)
 
                 if(np.abs(plane_height_cylinder_normal - cylinder_height) > 0.5):
                     centroid_plane_to_cylinder_axis = aux.distance_from_points_to_axis(pla.centroid, cyl.normal, cyl.center)
                     if((np.abs(centroid_plane_to_cylinder_axis[0]) < cyl.radius*1.2)):
                         dim_media = (pla.width+pla.height)/2
-                        print("Erro entre dim média e raio do cilindro: ", np.abs(dim_media -cyl.radius)/cyl.radius)
+                        #print("Erro entre dim média e raio do cilindro: ", np.abs(dim_media -cyl.radius)/cyl.radius)
                         if (np.abs(dim_media -cyl.radius)/cyl.radius) < 0.5:
-                            print("plano tampa do cilindro")
+                            #print("plano tampa do cilindro")
                             self.running_geo["plane"] = self.running_geo["plane"]+1
                             self.running_geo["total"] = self.running_geo["total"]+1
                             return True
                     return False
                 else:
-                    print("Verificando distância entre plano e cilindro")
+                    #print("Verificando distância entre plano e cilindro")
                     centroid_plane_to_cylinder_axis = aux.distance_from_points_to_axis(pla.centroid, cyl.normal, cyl.center)
-                    print(centroid_plane_to_cylinder_axis)
+                    #print(centroid_plane_to_cylinder_axis)
                     if((np.abs(centroid_plane_to_cylinder_axis[0]) > cyl.radius*1.2) ):
                         return False
                     else:
-                        print("Encontrou correspondencia")
+                        #print("Encontrou correspondencia")
                         self.running_geo["plane"] = self.running_geo["plane"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
                         return True
@@ -99,15 +99,15 @@ class Generic_feature:
                         self.running_geo["cylinder"] = self.running_geo["cylinder"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
                         return True
-            else:
+            if isinstance(compare_feat.feat,Plane):
                 pla= compare_feat.feat
                 cyl= self.feat
                 plane_height_cylinder_normal = pla.get_height(cyl.normal)
                 cylinder_height = cyl.height[1]-cyl.height[0]
-                print("Altura plano")
-                print(plane_height_cylinder_normal)
-                print("Altura cilindro")
-                print(cylinder_height)
+                #print("Altura plano")
+                #print(plane_height_cylinder_normal)
+                #print("Altura cilindro")
+                #print(cylinder_height)
 
                 #Vamos verificar se a centroide até o chão tem a altura do cilindro (chapéuzinho do cilindro)
 
@@ -116,21 +116,21 @@ class Generic_feature:
                     centroid_plane_to_cylinder_axis = aux.distance_from_points_to_axis(pla.centroid, cyl.normal, cyl.center)
                     if((np.abs(centroid_plane_to_cylinder_axis[0]) < cyl.radius*1.2)):
                         dim_media = (pla.width+pla.height)/2
-                        print("Erro entre dim média e raio do cilindro: ", np.abs(dim_media -cyl.radius)/cyl.radius)
+                        #print("Erro entre dim média e raio do cilindro: ", np.abs(dim_media -cyl.radius)/cyl.radius)
                         if (np.abs(dim_media -cyl.radius)/cyl.radius) < 1:
-                            print("plano tampa do cilindro")
+                            #print("plano tampa do cilindro")
                             self.running_geo["plane"] = self.running_geo["plane"]+1
                             self.running_geo["total"] = self.running_geo["total"]+1
                             return True
                     return False
                 else:
-                    print("Verificando distância entre plano e cilindro")
+                    #print("Verificando distância entre plano e cilindro")
                     centroid_plane_to_cylinder_axis = aux.distance_from_points_to_axis(pla.centroid, cyl.normal, cyl.center)
-                    print(centroid_plane_to_cylinder_axis)
+                    #print(centroid_plane_to_cylinder_axis)
                     if((np.abs(centroid_plane_to_cylinder_axis[0]) > cyl.radius*1.2) ):
                         return False
                     else:
-                        print("Encontrou correspondencia")
+                        #print("Encontrou correspondencia")
                         self.running_geo["plane"] = self.running_geo["plane"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
                         return True
@@ -147,7 +147,7 @@ class Generic_feature:
                     dimproxima2 = np.amin(np.abs(compara2))
                     # Verifica se dimensões do cupo são menores ou próximas do plano que está sendo comparado
                     if((dimproxima1 < 0.2 or dimproxima2 < 0.2) or (np.all(compara1>0) and np.all(compara2>0) )):
-                        print("Encontrou correspondencia NO CUBOIDE")
+                        #print("Encontrou correspondencia NO CUBOIDE")
                         self.running_geo["cuboid"] = self.running_geo["cuboid"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
                         return True

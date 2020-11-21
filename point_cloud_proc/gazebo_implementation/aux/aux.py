@@ -3,9 +3,10 @@ import numpy as np
 import random
 import copy 
 import matplotlib.pyplot as plt
+import cv2
 
 def drawPlane(plane):
-    print(plane.rMatrix.T)
+    #print(plane.rMatrix.T)
     box = o3d.geometry.TriangleMesh.create_box(width=plane.size[0], height=plane.size[1], depth=0.05).translate(plane.limits_f_plane[0, :])
     box = box.rotate(plane.rMatrix.T, center=(0,0,0)).translate(plane.tMatrix)
     return box
@@ -153,7 +154,7 @@ def display_inlier_outlier(cloud, ind):
     inlier_cloud = cloud.select_by_index(ind)
     outlier_cloud = cloud.select_by_index(ind, invert=True)
 
-    print("Showing outliers (red) and inliers (gray): ")
+    #print("Showing outliers (red) and inliers (gray): ")
     outlier_cloud.paint_uniform_color([1, 0, 0])
     inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
     o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
@@ -175,7 +176,7 @@ def distance_from_points_to_axis(p, axis, p_axis):
     return dist_pt
 
 def distance_from_points_to_plane(p, plane_eq):
-    print(p)
+    #print(p)
     p = np.asarray([p])
 
     dist_pt = (plane_eq[0]*p[:,0]+plane_eq[1]*p[:, 1]+plane_eq[2]*p[:, 2]+plane_eq[3])/np.sqrt(plane_eq[0]**2+plane_eq[1]**2+plane_eq[2]**2)
@@ -210,6 +211,22 @@ def get_point_between_two_lines(e1, e2, r1, r2):
     LHS = np.array([e1, -e2, n]).T
     res = np.linalg.solve(LHS, RHS)
     q1 = r1-res[0]*e1
-    print(np.linalg.solve(LHS, RHS))
+    #print(np.linalg.solve(LHS, RHS))
 
     return q1
+
+# def create_animation():
+#     image_folder = 'animations'
+#     video_name = 'video.avi'
+
+#     images = [img for img in os.listdir(image_folder) if (img.startswith("global-") and img.endswith(".png"))]
+#     frame = cv2.imread(os.path.join(image_folder, images[0]))
+#     height, width, layers = frame.shape
+
+#     video = cv2.VideoWriter(video_name, 0, 1, (width,height))
+
+#     for image in images:
+#         video.write(cv2.imread(os.path.join(image_folder, image)))
+
+#     cv2.destroyAllWindows()
+#     video.release()

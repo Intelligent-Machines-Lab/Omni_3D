@@ -23,13 +23,13 @@ class Cuboid:
         temp = np.partition(-alturas, 2)
         result = -temp[:2]
         self.height = (result[0]+result[1])/2
-        print("ALTURA DO CUBOIDE: ", self.height)
+        #print("ALTURA DO CUBOIDE: ", self.height)
         dim1 = np.asarray([plane1.width, plane1.height])
         dim2 = np.asarray([plane2.width, plane2.height])
         dim3 = np.asarray([plane3.width, plane3.height])
-        print("Dim1 : ", dim1)
-        print("Dim2 : ", dim2)
-        print("Dim3 : ", dim3)
+        #print("Dim1 : ", dim1)
+        #print("Dim2 : ", dim2)
+        #print("Dim3 : ", dim3)
         inlier_cubo = np.vstack((plane1.points_main, plane2.points_main, plane3.points_main))
 
 
@@ -43,8 +43,8 @@ class Cuboid:
         self.depth = height
         self.width = width
         self.rot_angle = rot_angle
-        print("largura: ",width)
-        print("comprimento:  ",height)
+        #print("largura: ",width)
+        #print("comprimento:  ",height)
 
 
     def get_geometry(self):

@@ -15,6 +15,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import Toplevel
 import pickle
+from mpl_toolkits.mplot3d import Axes3D
 
 class GlobalScene:
 
@@ -36,6 +37,7 @@ class GlobalScene:
 
         self.updated_global = threading.Event()
         self.updated_global.clear()
+        self.iatual = 0
 
 
 
@@ -47,11 +49,21 @@ class GlobalScene:
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
         # o3d.visualization.draw_geometries([pcd])
-
+        rotatex = 500
+        rotatey = 550
+        rotatey2 = 100
+        showimages = False
         vis_original = o3d.visualization.Visualizer()
 
         vis_original.create_window(window_name='Original', width=960, height=540, left=0, top=0)
         vis_original.add_geometry(self.lc_atual.pointCloud)
+        vis_original.get_view_control().rotate(0, rotatey)
+        vis_original.get_view_control().rotate(rotatex, 0)
+        vis_original.get_view_control().rotate(0, rotatey2)
+        vis_original.poll_events()
+        vis_original.update_renderer()
+        vis_original.capture_screen_image("animations/original-"+str(self.iatual)+".png")
+
 
         feat = self.lc_atual.getMainPlanes()
         feat.extend(self.lc_atual.getCylinders(showPointCloud=False))
@@ -60,38 +72,48 @@ class GlobalScene:
         vis_feature.create_window(window_name='Feature', width=960, height=540, left=960, top=0)
         for x in range(len(feat)):
             vis_feature.add_geometry(feat[x])
+        vis_feature.get_view_control().rotate(0, rotatey)
+        vis_feature.get_view_control().rotate(rotatex, 0)
+        vis_feature.get_view_control().rotate(0, rotatey2)
+        vis_feature.poll_events()
+        vis_feature.update_renderer()
+        vis_feature.capture_screen_image("animations/feature-"+str(self.iatual)+".png")
 
 
         vis_feature_global = o3d.visualization.Visualizer()
         vis_feature_global.create_window(window_name='Feature global', width=960, height=540, left=960, top=540)
         for x in range(len(self.fet_geo)):
             vis_feature_global.add_geometry(self.fet_geo[x])
+        vis_feature_global.get_view_control().rotate(0, rotatey)
+        vis_feature_global.get_view_control().rotate(rotatex, 0)
+        vis_feature_global.get_view_control().rotate(0, rotatey2*2)
+        vis_feature_global.poll_events()
+        vis_feature_global.update_renderer()
+        vis_feature_global.capture_screen_image("animations/global-"+str(self.iatual)+".png")
+        if(showimages):
+            while True:
+                vis_original.update_geometry(self.lc_atual.pointCloud)
+                if not vis_original.poll_events():
+                    break
+                vis_original.update_renderer()
+                #vis_original.capture_screen_image("animations/original-"+str(self.iatual)+".png")
 
-
-
-        while True:
-            vis_original.update_geometry(self.lc_atual.pointCloud)
-            if not vis_original.poll_events():
-                break
-            vis_original.update_renderer()
-
-            feat = self.lc_atual.getMainPlanes()
-            feat.extend(self.lc_atual.getCylinders(showPointCloud=False))
-            feat.extend(self.lc_atual.getSecundaryPlanes())
-            for x in range(len(feat)):
-                vis_feature.update_geometry(feat[x])
-            
-            if not vis_feature.poll_events():
-                break
-            vis_feature.update_renderer()
-
-
-
-            for x in range(len(self.fet_geo)):
-                vis_feature_global.update_geometry(self.fet_geo[x])
-            if not vis_feature_global.poll_events():
-                break
-            vis_feature_global.update_renderer()
+                feat = self.lc_atual.getMainPlanes()
+                feat.extend(self.lc_atual.getCylinders(showPointCloud=False))
+                feat.extend(self.lc_atual.getSecundaryPlanes())
+                for x in range(len(feat)):
+                    vis_feature.update_geometry(feat[x])
+                
+                if not vis_feature.poll_events():
+                    break
+                vis_feature.update_renderer()
+                #vis_feature.capture_screen_image("animations/feature-"+str(self.iatual)+".png")
+                for x in range(len(self.fet_geo)):
+                    vis_feature_global.update_geometry(self.fet_geo[x])
+                if not vis_feature_global.poll_events():
+                    break
+                vis_feature_global.update_renderer()
+                #vis_feature_global.capture_screen_image("animations/global-"+str(self.iatual)+".png")
 
         vis_feature_global.destroy_window()
         vis_original.destroy_window()
@@ -107,6 +129,7 @@ class GlobalScene:
 
 
     def add_pcd(self, pcd, commands_odom_linear, commands_odom_angular, duration, i):
+        self.iatual = i
         last_loc = np.asarray([0, 0, 0])
         last_angulo = np.asarray([0, 0, 0])
         if not len(self.scenes_translation) == 0:
@@ -138,8 +161,14 @@ class GlobalScene:
 
         atual_loc = last_loc + vel_linear_inertial*duration
         atual_angulo = last_angulo + vel_angular_inertial*duration
-        #print("atual_loc: "+ str(atual_loc))
-        #print("atual_angulo: "+ str(atual_angulo))
+        print("atual_loc: "+ str(atual_loc))
+        print("atual_angulo: "+ str(atual_angulo))
+        print("last_loc: "+ str(last_loc))
+        print("last_angulo: "+ str(last_angulo))
+        print("vel_linear_inertial: "+ str(vel_linear_inertial))
+        print("vel_angular_inertial: "+ str(vel_angular_inertial))
+        print("duration: "+ str(duration))
+
 
         from_camera_to_inertial(pcd)
 
@@ -253,7 +282,7 @@ class GlobalScene:
                                         if(np.linalg.norm(perpendicularity - normal3) < 0.3):
                                             d1 = distance_from_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
                                             d2 = distance_from_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
-                                            print("TESTOU AQUI DENTRO - ", d1, " - ", d2)
+                                            #print("TESTOU AQUI DENTRO - ", d1, " - ", d2)
                                             meandim = np.mean([ob.feat.width, ob.feat.height, ob2.feat.width, ob2.feat.height, ob3.feat.width, ob3.feat.height])
                                             if(np.linalg.norm(d1) < meandim and np.linalg.norm(d2) < meandim  ):
                                                 cub = Cuboid(ob.feat, ob2.feat, ob3.feat, self.ground_normal)
@@ -289,19 +318,51 @@ class GlobalScene:
 
                 found_cuboid = True
 
+        # Map cleaning
+        if(i % 5 == 0):
+            print("------------------------")
+            print("TA FAZENDO MAP CLEANING")
+            print("------------------------")
+            limpou_objeto = True
+            while limpou_objeto:
+                list_to_delete = []
+                for i_global1 in range(len(self.features_objects)):
+                    #if(self.features_objects[i_global1].self.running_geo[""])
+                    for i_global2 in range(len(self.features_objects)):
+                        if(not (i_global1 == i_global2)):
+                            if(self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2])):
+                                list_to_delete.append(self.features_objects[i_global2])
+                                break
+                    if list_to_delete:
+                        break
+                if list_to_delete:
+                    self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
+                    limpou_objeto = True
+                else:
+                    limpou_objeto = False
+
+
+
+
         self.scenes_rotation.append(atual_angulo)
         self.scenes_translation.append(atual_loc)
         #self.fet_geo = []
         for ob in self.features_objects:
-            if(ob.running_geo["total"] > 2):
+            if(ob.running_geo["total"] >= 2):
                 self.fet_geo.append(ob.feat.get_geometry())
 
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=50):
+        if(i >=0):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
-
+            #fig = plt.figure()
+            #ax = fig.add_subplot(111, projection='3d')
+            #posi = np.asarray(self.scenes_translation)
+            #print(posi)
+            #ax.plot3D(posi[:, 0], posi[:, 1], posi[:, 2], 'gray')
+            #plt.show()
+            #ax.plot(atual_loc[:, 0],atual_loc[:, 1],atual_loc[:, 2])
 
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)
