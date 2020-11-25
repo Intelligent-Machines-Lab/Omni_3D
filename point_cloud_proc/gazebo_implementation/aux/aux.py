@@ -133,6 +133,9 @@ def open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=5, sho
     depth_scale=1/1000
 
     rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_raw, depth_raw, depth_scale=1/depth_scale, depth_trunc=meters_trunc, convert_rgb_to_intensity=False)
+    
+
+
 
     if(showImages):
         plt.subplot(1, 2, 1)

@@ -13,6 +13,7 @@ from aux.aux import *
 from aux.LocalScene import LocalScene
 from aux.GlobalScene import GlobalScene
 from aux.plane import Plane
+from aux.odometer import Odometer
 import pandas as pd
 import threading #thread module imported
 import traceback
@@ -25,12 +26,13 @@ list_rgb = sorted(glob.glob(pastanome+"/*_rgb.png"))
 
 df = pd.read_csv(pastanome+"/data.txt", index_col=False)
 df.columns =[col.strip() for col in df.columns]
-print(df)
+#print(df)
 
 nImages = len(df.index)
 
 transformationList = [] # Should be n-1 images
 gc = GlobalScene()
+odom = Odometer(pastanome)
 # last_angx = df['ang_x'].values[0]
 # last_angy = df['ang_y'].values[0]
 # last_angz = df['ang_z'].values[0]
@@ -46,20 +48,16 @@ gc = GlobalScene()
 
 for a in range(nImages):
     i = a
-    color_raw = o3d.io.read_image(pastanome+"/"+str(i)+"_rgb.png")
-    depth_raw = o3d.io.read_image(pastanome+"/"+str(i)+"_depth.png")
+    print(odom.get_odometry(i))
+    color_raw = o3d.io.read_image(pastanome+"/"+str(i+1)+"_rgb.png")
+    depth_raw = o3d.io.read_image(pastanome+"/"+str(i+1)+"_depth.png")
     pcd = open_pointCloud_from_rgb_and_depth(
         color_raw, depth_raw, meters_trunc=2, showImages = False)
     #o3d.visualization.draw_geometries([pcd])
 
-    t_dur = df['t_command'].values[i]
-    c_linear = [df['c_linear_x'].values[i],
-                df['c_linear_y'].values[i], df['c_linear_z'].values[i]]
-    c_angular = [df['c_angular_x'].values[i], df['c_angular_y'].values[i], df['c_angular_z'].values[i]]
-    print(c_angular)
     #print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
-
-    gc.add_pcd(pcd, c_linear, c_angular, t_dur, i)
+    #break
+    #gc.add_pcd(pcd, c_linear, c_angular, t_dur, i)
 
     #last_angx = df['ang_x'].values[i]
     #last_angy = df['ang_y'].values[i]

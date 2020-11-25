@@ -68,16 +68,16 @@ def draw_registration_result(source, target, transformation):
     o3d.visualization.draw_geometries([source_temp, target_temp])
 
 def preprocess_point_cloud(pcd, voxel_size):
-    print(":: Downsample with a voxel size %.3f." % voxel_size)
+    #print(":: Downsample with a voxel size %.3f." % voxel_size)
     pcd_down = pcd.voxel_down_sample(voxel_size)
 
     radius_normal = voxel_size * 2
-    print(":: Estimate normal with search radius %.3f." % radius_normal)
+    #print(":: Estimate normal with search radius %.3f." % radius_normal)
     pcd_down.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
 
     radius_feature = voxel_size * 5
-    print(":: Compute FPFH feature with search radius %.3f." % radius_feature)
+    #print(":: Compute FPFH feature with search radius %.3f." % radius_feature)
     pcd_fpfh = o3d.registration.compute_fpfh_feature(
         pcd_down,
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
@@ -92,18 +92,18 @@ def prepare_dataset(source, target, voxel_size=0.05):
 def execute_global_registration(source_down, target_down, source_fpfh,
                                 target_fpfh, voxel_size):
     distance_threshold = voxel_size * 1.5
-    print(":: RANSAC registration on downsampled point clouds.")
-    print("   Since the downsampling voxel size is %.3f," % voxel_size)
-    print("   we use a liberal distance threshold %.3f." % distance_threshold)
+    #print(":: RANSAC registration on downsampled point clouds.")
+    #print("   Since the downsampling voxel size is %.3f," % voxel_size)
+    #print("   we use a liberal distance threshold %.3f." % distance_threshold)
     result = o3d.registration.registration_ransac_based_on_feature_matching(
         source_down, target_down, source_fpfh, target_fpfh, distance_threshold,
-        o3d.registration.TransformationEstimationPointToPoint(False), 4, [
-            o3d.registration.CorrespondenceCheckerBasedOnEdgeLength(0.8),
+        o3d.registration.TransformationEstimationPointToPoint(True), 4, [
+            o3d.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
             o3d.registration.CorrespondenceCheckerBasedOnDistance(
                 distance_threshold)
         ], o3d.registration.RANSACConvergenceCriteria(4000000, 1000))
     return result
-nomepasta = "dataset3"
+nomepasta = "dataset2"
 df = pd.read_csv(nomepasta+"/data.txt", index_col=False)
 df.columns =[col.strip() for col in df.columns]
 
@@ -126,67 +126,106 @@ for a in range(len(list_rgb)-1):
     pc2 = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=3, showImages = False)
 
     T = np.identity(4)
-    voxel_size = 0.1 # means 5cm for this dataset
+    voxel_size = 0.05 # means 5cm for this dataset
     source, target, source_down, target_down, source_fpfh, target_fpfh = prepare_dataset(pc1, pc2, voxel_size)
     #if(first_estimate_method == "RANSAC"):
     # Global registration
     result_ransac = execute_global_registration(source_down, target_down, source_fpfh, target_fpfh, voxel_size)
     current_transformation = result_ransac.transformation
-    print("Global registration: ", current_transformation)
+    glob_reg = current_transformation
+    rot_matrix = glob_reg[:3,:3]
+    yaw = np.arctan2(rot_matrix[1][0],rot_matrix[0][0])
+    pitch = np.arctan2(-rot_matrix[2][0],np.sqrt(rot_matrix[2][1]**2+rot_matrix[2][2]**2))
+    roll = np.arctan2(rot_matrix[2][1],rot_matrix[2][2])
+    #print("Global registration: ", glob_reg)
+    print("RANSAC ------------------")
+    print("yaw: ", yaw)
+    print("pitch: ", pitch)
+    print("roll: ", roll)
+    print("X: ", glob_reg[0,3])
+    print("Y: ", glob_reg[1,3])
+    print("Z: ", glob_reg[2,3])
     #else:
     t_dur = df['t_command'].values[i+1]
     c_linear = [df['c_linear_x'].values[i+1],
                 df['c_linear_y'].values[i+1], df['c_linear_z'].values[i+1]]
     c_angular = [df['c_angular_x'].values[i+1], df['c_angular_y'].values[i+1], df['c_angular_z'].values[i+1]]
-    T[:3,:3] = get_rotation_matrix_bti((c_angular[1],c_angular[2], c_angular[0])*t_dur).T
+    T[:3,:3] = get_rotation_matrix_bti([c_angular[1]*t_dur,c_angular[2]*t_dur, c_angular[0]*t_dur]).T
     T[0,3] = c_linear[2]*t_dur
     T[1,3] = c_linear[1]*t_dur
     T[2,3] = c_linear[0]*t_dur # Odometria X significa aumento do Z
-    #current_transformation = T
-    print("Odometry: ", current_transformation)
+    odom_transf = T
+    #print("Odometry: ", odom_transf)
+    rot_matrix = odom_transf[:3,:3]
+    yaw = np.arctan2(rot_matrix[1][0],rot_matrix[0][0])
+    pitch = np.arctan2(-rot_matrix[2][0],np.sqrt(rot_matrix[2][1]**2+rot_matrix[2][2]**2))
+    roll = np.arctan2(rot_matrix[2][1],rot_matrix[2][2])
+    print("Odometry ------------------")
+    print("yaw: ", yaw)
+    print("pitch: ", pitch)
+    print("roll: ", roll)
+    print("X: ", odom_transf[0,3])
+    print("Y: ", odom_transf[1,3])
+    print("Z: ", odom_transf[2,3])
 
-    voxel_radius = [0.05, 0.04, 0.02]
-    max_iter = [5000, 300, 140]
+
+
+    voxel_radius = [0.1, 0.05, 0.04, 0.02, 0.01]
+    max_iter = [50000, 10000, 5000, 300, 140]
     #current_transformation = np.identity(4)
+
+    current_transformation = odom_transf
     
     draw_registration_result(source, target, current_transformation)
     #print(current_transformation)
 
-    for scale in range(3):
+    for scale in range(5):
         iter = max_iter[scale]
         radius = voxel_radius[scale]
-        print([iter, radius, scale])
+        #print([iter, radius, scale])
 
 
         if(icp_method == "colored"):
-            print("3-3. Applying colored point cloud registration")
+            #print("3-3. Applying colored point cloud registration")
             result_icp = o3d.registration.registration_icp(
                 source_down, target_down, radius, current_transformation,
                 o3d.registration.ICPConvergenceCriteria(relative_fitness=1e-6,
                                                         relative_rmse=1e-6,
                                                         max_iteration=iter))
             current_transformation = result_icp.transformation
-            print(result_icp)
+            #print(result_icp)
         else:
-            print("3-1. Downsample with a voxel size %.2f" % radius)
+            #print("3-1. Downsample with a voxel size %.2f" % radius)
             source_down = source.voxel_down_sample(radius)
             target_down = target.voxel_down_sample(radius)
 
-            print("3-2. Estimate normal.")
+            #print("3-2. Estimate normal.")
             source_down.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
             target_down.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
-            print("3-3. Applying normal point cloud registration")
+            #print("3-3. Applying normal point cloud registration")
             result_icp = o3d.registration.registration_icp(
                 source_down, target_down, radius, current_transformation,
                 o3d.registration.TransformationEstimationPointToPlane())
             current_transformation = result_icp.transformation
-            print(result_icp)
+            #print(result_icp)
+
 
     # print(reg_p2p)
     # print("Transformation is:")
     # print(reg_p2p.transformation)
+    
+    rot_matrix = current_transformation[:3,:3]
+    yaw = np.arctan2(rot_matrix[1][0],rot_matrix[0][0])
+    pitch = np.arctan2(-rot_matrix[2][0],np.sqrt(rot_matrix[2][1]**2+rot_matrix[2][2]**2))
+    roll = np.arctan2(rot_matrix[2][1],rot_matrix[2][2])
+    print("ICP ------------------")
+    print("yaw: ", yaw)
+    print("pitch: ", pitch)
+    print("roll: ", roll)
+    print("X: ", current_transformation[0,3])
+    print("Y: ", current_transformation[1,3])
+    print("Z: ", current_transformation[2,3])
     draw_registration_result(source, target, current_transformation)
-
 
     transformationList.append(current_transformation)
 

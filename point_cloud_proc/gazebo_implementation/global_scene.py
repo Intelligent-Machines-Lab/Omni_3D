@@ -42,13 +42,34 @@ last_angz = df['ang_z'].values[0]
 # t = threading.Thread(target=showGUI, daemon=True)
 # t.start()
 
+use_gaussian_noise = False
+
 
 for a in range(nImages):
     i = a+0
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
+    # dp = cv2.imread(nomepasta+"/"+str(i)+"_depth.png",cv2.IMREAD_UNCHANGED)
+    # depth_raw = o3d.geometry.Image(dp.astype(np.uint16))
+    #depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
+
+
+
+
     pcd = open_pointCloud_from_rgb_and_depth(
         color_raw, depth_raw, meters_trunc=100, showImages = False)
+
+    if use_gaussian_noise:
+        pontos = np.asarray(pcd.points)
+        for ponto in pontos:
+            z = ponto[2]
+            mean = 0
+            sigma = 0.001063+0.0007278*z+0.003949*z*z
+            # based on Analysis  and  Noise  Modeling  of  the  Intel  RealSense  D435  for  MobileRobots
+            #logistic(0,noise,
+            #ponto[2] = ponto[2] + np.random.normal(mean, sigma, 1)
+            ponto[2] = ponto[2] + np.random.logistic(0,sigma/10)
+
     #o3d.visualization.draw_geometries([pcd])
 
     t_dur = df['t_command'].values[i]

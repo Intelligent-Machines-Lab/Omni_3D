@@ -100,6 +100,21 @@ def get_rotation_matrix_bti(angles):
     
     return matr    
 
+def get_yawpitchroll_from_rotation_matrix(rot_matrix):
+    yaw = np.arctan2(rot_matrix[1][0],rot_matrix[0][0])
+    pitch = np.arctan2(-rot_matrix[2][0],np.sqrt(rot_matrix[2][1]**2+rot_matrix[2][2]**2))
+    roll = np.arctan2(rot_matrix[2][1],rot_matrix[2][2])
+    
+    return yaw, pitch, roll  
+
+def get_xyz_yawpitchroll_from_transf_matrix(transf_matrix):
+    rot_matrix = transf_matrix[:3,:3]
+    yaw, pitch, roll = get_yawpitchroll_from_rotation_matrix(rot_matrix)
+    x, y, z = transf_matrix[0,3], transf_matrix[1,3], transf_matrix[2,3]
+    return x, y, z, yaw, pitch, roll
+
+def get_diff_angles(ang1, ang2):
+    return np.arctan2(np.sin(ang1-ang2), np.cos(ang1-ang2))
 
 
 

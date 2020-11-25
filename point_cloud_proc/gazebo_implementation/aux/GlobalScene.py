@@ -52,7 +52,8 @@ class GlobalScene:
         rotatex = 500
         rotatey = 550
         rotatey2 = 100
-        showimages = False
+        showimages = True
+        save_image = False
         vis_original = o3d.visualization.Visualizer()
 
         vis_original.create_window(window_name='Original', width=960, height=540, left=0, top=0)
@@ -62,7 +63,8 @@ class GlobalScene:
         vis_original.get_view_control().rotate(0, rotatey2)
         vis_original.poll_events()
         vis_original.update_renderer()
-        vis_original.capture_screen_image("animations/original-"+str(self.iatual)+".png")
+        if(save_image):
+            vis_original.capture_screen_image("animations/original-"+str(self.iatual)+".png")
 
 
         feat = self.lc_atual.getMainPlanes()
@@ -77,7 +79,8 @@ class GlobalScene:
         vis_feature.get_view_control().rotate(0, rotatey2)
         vis_feature.poll_events()
         vis_feature.update_renderer()
-        vis_feature.capture_screen_image("animations/feature-"+str(self.iatual)+".png")
+        if(save_image):
+            vis_feature.capture_screen_image("animations/feature-"+str(self.iatual)+".png")
 
 
         vis_feature_global = o3d.visualization.Visualizer()
@@ -89,7 +92,8 @@ class GlobalScene:
         vis_feature_global.get_view_control().rotate(0, rotatey2*2)
         vis_feature_global.poll_events()
         vis_feature_global.update_renderer()
-        vis_feature_global.capture_screen_image("animations/global-"+str(self.iatual)+".png")
+        if(save_image):
+            vis_feature_global.capture_screen_image("animations/global-"+str(self.iatual)+".png")
         if(showimages):
             while True:
                 vis_original.update_geometry(self.lc_atual.pointCloud)
