@@ -87,7 +87,7 @@ class LocalScene:
                 self.mainPlanes.append(p)
             if(self.filter_radius):
                 cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.12)
-                display_inlier_outlier(outlier_cloud, ind)
+                #display_inlier_outlier(outlier_cloud, ind)
                 outlier_cloud = outlier_cloud.select_by_index(ind)
         self.pointCloud_notMainPlanes = outlier_cloud
 

@@ -13,6 +13,7 @@ from aux.aux import *
 from aux.LocalScene import LocalScene
 from aux.GlobalScene import GlobalScene
 from aux.plane import Plane
+# from aux.odometer import Odometer
 import pandas as pd
 import threading #thread module imported
 import traceback
@@ -33,31 +34,21 @@ gc = GlobalScene()
 last_angx = df['ang_x'].values[0]
 last_angy = df['ang_y'].values[0]
 last_angz = df['ang_z'].values[0]
-
-#vis_feature = o3d.visualization.Visualizer()
-#vis_feature.create_window(width=960, height=540, left=960, top=0)
-
-#threading.Thread(target=gc.update_feature_geometry, args=(vis_feature,), daemon=True).start()
-
-# t = threading.Thread(target=showGUI, daemon=True)
-# t.start()
+# odom = Odometer(nomepasta)
 
 use_gaussian_noise = False
 
 
 for a in range(nImages):
-    i = a+0
+    i = a+1+0
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
     # dp = cv2.imread(nomepasta+"/"+str(i)+"_depth.png",cv2.IMREAD_UNCHANGED)
     # depth_raw = o3d.geometry.Image(dp.astype(np.uint16))
     #depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
 
-
-
-
     pcd = open_pointCloud_from_rgb_and_depth(
-        color_raw, depth_raw, meters_trunc=100, showImages = False)
+        color_raw, depth_raw, meters_trunc=7, showImages = False)
 
     if use_gaussian_noise:
         pontos = np.asarray(pcd.points)
@@ -67,10 +58,28 @@ for a in range(nImages):
             sigma = 0.001063+0.0007278*z+0.003949*z*z
             # based on Analysis  and  Noise  Modeling  of  the  Intel  RealSense  D435  for  MobileRobots
             #logistic(0,noise,
-            #ponto[2] = ponto[2] + np.random.normal(mean, sigma, 1)
-            ponto[2] = ponto[2] + np.random.logistic(0,sigma/10)
+            ponto[2] = ponto[2] + np.random.normal(mean, sigma, 1)
+            #ponto[2] = ponto[2] + np.random.logistic(0,sigma/10)
 
+    diameter = np.linalg.norm(np.asarray(pcd.get_max_bound()) - np.asarray(pcd.get_min_bound()))
+    #print("Define parameters used for hidden_point_removal")
+    camera = [0, 0, diameter]
+    radius = diameter *700
+
+    #print("Get all points that are visible from given view point")
+    _, pt_map = pcd.hidden_point_removal(camera, radius)
+
+    #print("Visualize result")
+    pcd = pcd.select_by_index(pt_map)
     #o3d.visualization.draw_geometries([pcd])
+
+
+
+    # m_trans = odom.get_odometry(i-1, method="auto", icp_refine=True, max_tentativas_ransac = 10)
+    # t_dur = 1
+    # x,y,z,yaw,pitch,roll = get_xyz_yawpitchroll_from_transf_matrix(m_trans)
+    # c_linear = np.asarray([z, x, y])
+    # c_angular = np.asarray([yaw,roll,pitch])
 
     t_dur = df['t_command'].values[i]
     c_linear = [df['c_linear_x'].values[i],
@@ -81,7 +90,6 @@ for a in range(nImages):
     diff_angz = np.arctan2(np.sin(df['ang_z'].values[i]-last_angz), np.cos(df['ang_z'].values[i]-last_angz))
     c_angular = [diff_angx, diff_angy, diff_angz]/t_dur
 
-    #print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
     print("----------")
     print("Foto ", i)
     print("----------")
@@ -91,15 +99,6 @@ for a in range(nImages):
     last_angy = df['ang_y'].values[i]
     last_angz = df['ang_z'].values[i]
 
-    # ls = LocalScene(pcd)
-
-    # ls.findMainPlanes()
-    # ls.defineGroundNormal()
-    # ls.clusterizeObjects()
-    # ls.fitCylinder()
-    # ls.findSecundaryPlanes()
-
-    # ls.custom_draw_geometry()
 
 
 

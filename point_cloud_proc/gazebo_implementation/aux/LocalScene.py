@@ -9,7 +9,7 @@ from aux.aux import *
 
 class LocalScene:
 
-    def __init__(self, pointCloud, filter_radius=False):
+    def __init__(self, pointCloud, filter_radius=True):
         self.pointCloud = pointCloud # Total point cloud
         self.npontos = np.asarray(self.pointCloud.points).shape[0]
         self.filter_radius = filter_radius
@@ -25,8 +25,8 @@ class LocalScene:
         self.groundEquation = []
         self.groundID = 0
 
-        self.circulation_cylinder = 0.018
-        self.percentage_std_radius = 0.08
+        self.circulation_cylinder = 0.04
+        self.percentage_std_radius = 0.1
 
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
@@ -73,9 +73,9 @@ class LocalScene:
             points = np.asarray(outlier_cloud.points)
             
             p = Plane()
-            best_eq, best_inliers, valid = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=400)
+            best_eq, best_inliers, valid = p.findPlane(points, thresh=0.1, minPoints=100, maxIteration=400)
             qtn_inliers = best_inliers.shape[0]
-            if(qtn_inliers < int(0.1*self.npontos)):
+            if(qtn_inliers < int(0.15*self.npontos)):
                 break
             out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
             points = np.asarray(out.points)
@@ -86,7 +86,8 @@ class LocalScene:
                 p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
                 self.mainPlanes.append(p)
             if(self.filter_radius):
-                cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.12)
+                #print("TA NO MAIN")
+                cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.0012*self.npontos), radius=0.2)
                 #display_inlier_outlier(outlier_cloud, ind)
                 outlier_cloud = outlier_cloud.select_by_index(ind)
         self.pointCloud_notMainPlanes = outlier_cloud
@@ -107,7 +108,7 @@ class LocalScene:
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(self.mainPlanes[self.groundID].inliers)
             centerPCD = pcd.get_center()
-            print(self.groundNormal)
+            #print(self.groundNormal)
             mesh.rotate(get_rotationMatrix_from_vectors([0, 0, 1], self.groundNormal), center=(0, 0, 0)).translate(centerPCD)
             pointCloudList.append(mesh)
         return pointCloudList
@@ -125,7 +126,7 @@ class LocalScene:
         normalCandidatesY = []
         for i in range(len(self.mainPlanes)):
             normalCandidatesY.append(abs(self.mainPlanes[i].equation[2]))
-            print("Equacaodoplano ",self.mainPlanes[i].equation)
+            #print("Equacaodoplano ",self.mainPlanes[i].equation)
         if normalCandidatesY:
             valMax = max(normalCandidatesY)
             idMax = normalCandidatesY.index(valMax)
@@ -137,18 +138,18 @@ class LocalScene:
                     self.groundEquation = -self.groundEquation
                 self.groundID = idMax
             else:
-                print("Tendo que usar equação reserva do chão: ", self.groundEquation)
+                #print("Tendo que usar equação reserva do chão: ", self.groundEquation)
                 self.groundEquation = np.asarray(ground_eq_reserva)
                 self.groundNormal = np.asarray([self.groundEquation[0], self.groundEquation[1], self.groundEquation[2]])
                 self.groundID = -1
         else:
-            print("Tendo que usar equação reserva do chão: ", self.groundEquation)
+            #print("Tendo que usar equação reserva do chão: ", self.groundEquation)
             self.groundEquation = np.asarray(ground_eq_reserva)
             self.groundNormal = np.asarray([self.groundEquation[0], self.groundEquation[1], self.groundEquation[2]])
             self.groundID = -1
         self.groundNormal = self.groundNormal.tolist()
         self.groundEquation = self.groundEquation.tolist()
-        print("Ground normal: "+str(self.groundNormal))
+        #print("Ground normal: "+str(self.groundNormal))
 
 
     def clusterizeObjects(self):
@@ -158,8 +159,10 @@ class LocalScene:
 
         max_label = labels.max()
         print(f"point cloud has {max_label + 1} clusters")
-
-        #o3d.visualization.draw_geometries([filtered_not_planes])
+        # colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
+        # colors[labels < 0] = 0
+        # filtered_not_planes.colors = o3d.utility.Vector3dVector(colors[:, :3])
+        # o3d.visualization.draw_geometries([filtered_not_planes])
         cluster_array = []
         for n_cluster in range(max_label+1):
             index_from_cluster = np.where(labels == n_cluster)[0]
@@ -175,7 +178,7 @@ class LocalScene:
             points = np.asarray(self.pointCloud_objects[i_obj].points)
             cyl.find(points, thresh=0.05, maxIteration=1000, forceAxisVector = self.groundNormal, useRANSAC = False)
             cyl.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
-            #cyl.calculatePlanification(showNormal=False)
+            cyl.calculatePlanification(showNormal=False)
             self.mainCylinders.append(cyl)
 
 
@@ -215,6 +218,8 @@ class LocalScene:
     def is_cylinder(self, cylinder):
         cylinder_condition = True
         cylinder_condition = cylinder_condition and (cylinder.radius < 1.5)
+        
+        #cylinder_condition = cylinder_condition and (cylinder.circulation_mean > self.circulation_cylinder)
         cylinder_condition = cylinder_condition and (cylinder.radius_std/cylinder.radius_mean < self.percentage_std_radius)
         return cylinder_condition
             
@@ -252,7 +257,7 @@ class LocalScene:
                     points = np.asarray(outlier_cloud.points)
                     
                     p = Plane()
-                    best_eq, best_inliers, valid = p.findPlane(points, thresh=0.02, minPoints=int(0.0004*self.npontos), maxIteration=400)
+                    best_eq, best_inliers, valid = p.findPlane(points, thresh=0.05, minPoints=int(0.0004*self.npontos), maxIteration=400)
                     qtn_inliers = np.asarray(best_inliers).shape[0]
                     if(qtn_inliers < int(0.0005*self.npontos)):
                         break
@@ -263,9 +268,12 @@ class LocalScene:
                         p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
                         self.secundaryPlanes.append(p)
                         removeIndexes.append(i_cyl)
+                    if(np.asarray(outlier_cloud.points).shape[0] < 10):
+                        break
                     if(self.filter_radius):
-                        cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*self.npontos), radius=0.10)
-                        display_inlier_outlier(outlier_cloud, ind)
+                        #print("TA NO SECUNDÁRIO")
+                        cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.0012*self.npontos), radius=0.2)
+                        #display_inlier_outlier(outlier_cloud, ind)
                         outlier_cloud = outlier_cloud.select_by_index(ind)
                     if(np.asarray(outlier_cloud.points).shape[0] < 10):
                         break

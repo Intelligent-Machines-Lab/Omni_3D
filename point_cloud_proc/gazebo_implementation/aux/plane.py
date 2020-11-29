@@ -186,7 +186,7 @@ class Plane:
         return mesh_box
 
 
-    def append_plane(self, points):
+    def append_plane(self, plano, nvezes):
         #print("Shape antes de append: "+str(self.inliers.shape[0]))
         
         # #print("Shape depois de append: "+str(self.inliers.shape[0]))
@@ -197,6 +197,32 @@ class Plane:
 
         # dimin = np.amin([width, height])
         # if(np.linalg.norm(centroid_pontos-centroid_retangulo)<dimin*0.1):
+        usa_media = True
+        points = plano.feat.points_main
+        if(usa_media):
+            eqplano2 = plano.feat.equation
+            nvezes_plano2 = plano.running_geo["total"]
+            eqplano1 = self.equation
+
+            # Deixa normal do plano no mesmo sentido:
+            if not (np.sign(eqplano2[3]) == np.sign(eqplano1[3])):
+                eqplano2 = -np.asarray(eqplano2)
+
+
+            # nova equação do plano:
+            # Média ponderada entre o o número de vezes já detectado e da área de cada plano
+            # print('eqplano1: ', eqplano1, ' nvezes: ', nvezes+1)
+            # print('eqplano2: ', eqplano2, 'nvezes_plano2: ', nvezes_plano2)
+
+            area1 = self.width*self.height
+            area2 = plano.feat.width*plano.feat.height
+
+            self.equation = (np.asarray(eqplano1)*nvezes*area1 + np.asarray(eqplano2)*nvezes_plano2*area2)/((nvezes*area1+nvezes_plano2*area2))
+            print("JUNTANDO AS EQUAÇÃO TUDO: ",self.equation)
+
+            # Muda os dois planos para essa orientação e posição:
+            #self.points_main = aux.rodrigues_rot(self.points_main, [eqplano1[0], eqplano1[1], eqplano1[2]], [self.equation[0], self.equation[1], self.equation[2]])
+            #points = aux.rodrigues_rot(points, [eqplano2[0], eqplano2[1], eqplano2[2]], [self.equation[0], self.equation[1], self.equation[2]])
 
         provisorio = copy.deepcopy(np.append(self.points_main, points, axis=0))
         center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(provisorio)

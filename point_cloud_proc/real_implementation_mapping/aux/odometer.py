@@ -8,6 +8,7 @@ import copy
 import pandas as pd
 import os
 from aux.aux import *
+from aux.plane import Plane
 
 
 class Odometer:
@@ -62,7 +63,31 @@ class Odometer:
             ], o3d.registration.RANSACConvergenceCriteria(4000000, 1000))
         return result
 
-    def get_odometry(self, i, method="auto", icp_refine=True, max_tentativas_ransac = 4, frame='camera'):
+    # def removeMainPlanes(self, pc1):
+    #     outlier_cloud = copy.deepcopy(pc1)
+    #     npontos = np.asarray(outlier_cloud.points).shape[0]
+    #     filter_radius = True
+    #     while(True):
+    #         # Ransac planar
+    #         points = np.asarray(outlier_cloud.points)
+            
+    #         p = Plane()
+    #         best_eq, best_inliers, valid = p.findPlane(points, thresh=0.06, minPoints=100, maxIteration=400)
+    #         qtn_inliers = best_inliers.shape[0]
+    #         if(qtn_inliers < int(0.2*npontos)):
+    #             break
+    #         out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
+    #         points = np.asarray(out.points)
+    #         if(points.shape[0] < int(0.004*npontos)):
+    #             break
+    #         outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
+    #         if(filter_radius):
+    #             cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.002*npontos), radius=0.12)
+    #             #display_inlier_outlier(outlier_cloud, ind)
+    #             outlier_cloud = outlier_cloud.select_by_index(ind)
+    #     return outlier_cloud
+
+    def get_odometry(self, i, method="auto", icp_refine=True, max_tentativas_ransac = 10, frame='camera'):
         df = pd.read_csv(self.nomepasta+"/data.txt", index_col=False)
         df.columns =[col.strip() for col in df.columns]
 
@@ -78,6 +103,9 @@ class Odometer:
             color_raw = o3d.io.read_image(self.nomepasta+"/"+str(i+1)+"_rgb.png")
             depth_raw = o3d.io.read_image(self.nomepasta+"/"+str(i+1)+"_depth.png")
             pc2 = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=3, showImages = False)
+
+            # pc1 = self.removeMainPlanes(pc1)
+            # pc2 = self.removeMainPlanes(pc2)
 
             voxel_size = 0.05 # means 5cm for this dataset
             source, target, source_down, target_down, source_fpfh, target_fpfh = self.prepare_dataset(pc1, pc2, voxel_size)
@@ -126,7 +154,7 @@ class Odometer:
                     else:
                         current_transformation = glob_reg
                     
-                    self.draw_registration_result(source, target, current_transformation)
+                    #self.draw_registration_result(source, target, current_transformation)
                     #print(current_transformation)
 
                     for scale in range(5):
@@ -166,13 +194,13 @@ class Odometer:
                     print("X: ", x)
                     print("Y: ", y)
                     print("Z: ", z)
-                    self.draw_registration_result(source, target, current_transformation)
+                    #self.draw_registration_result(source, target, current_transformation)
             if not icp_refine:
                 if(method == "odom"):
                     current_transformation = odom_transf
                 else:
                     current_transformation = glob_reg
-                self.draw_registration_result(source, target, current_transformation)
+                #self.draw_registration_result(source, target, current_transformation)
             if(method == "odom" or method == "ransac"):
                 deu_boa = True
             else:
@@ -187,7 +215,7 @@ class Odometer:
                 max_desl_error = np.amax(diffpos)
                 max_angle_error = np.amax(diffangle)
 
-                if(max_desl_error > 0.5 or max_angle_error > 0.7):
+                if(max_desl_error > 0.2 or max_angle_error > 0.2):
                     print("deu ruim, erros pos: ", diffpos, " erro anglo: ", diffangle)
                     if(n_auto < max_tentativas_ransac):
                         deu_boa = False
@@ -200,6 +228,9 @@ class Odometer:
                     #print("deu boa, erros pos: ", diffpos, " erro anglo: ", diffangle)
                     deu_boa = True
                     current_transformation = glob_reg
+
+
+        #self.draw_registration_result(source, target, current_transformation)
         return current_transformation
 
 

@@ -12,7 +12,9 @@ class Generic_feature:
     def __init__(self, feat, ground_equation = [0, 0, 0, 0]):
         self.ground_equation = ground_equation
         self.feat = feat
-        self.running_geo = {"total": 0, "plane":0, "cylinder":0, "cuboid":0}
+        self.running_geo = {"total": 1, "plane":0, "cylinder":0, "cuboid":0}
+        if isinstance(self.feat,Plane):
+            self.running_geo['plane'] = 1
 
 
     def verifyCorrespondence(self, compare_feat):
@@ -34,21 +36,27 @@ class Generic_feature:
 
                     d = aux.distance_from_points_to_plane( compare_feat.feat.centroid, self.feat.equation)
                     #print("DISTANCIA DO PLANO PRA CENTROIDE DO OUTRO PLANO: "+str(d))
-                    if np.abs(d[0]) > 0.5:
+                    if np.abs(d[0]) > 0.2:
                         return False
                     else:
-                        d_maior = np.amax([self.feat.width,self.feat.height, compare_feat.feat.width,compare_feat.feat.height])
-                        if(np.linalg.norm((self.feat.centroid - compare_feat.feat.centroid)) < d_maior):
-                            #print("Encontrou correspondencia")
-                            #print("Original feature: "+str(self.feat.equation))
-                            #print("Candidate feature: "+str(compare_feat.feat.equation))
-                            #print("Erro "+str(errorNormal))
-                            if(self.feat.append_plane(compare_feat.feat.points_main)):
-                                self.running_geo["plane"] = self.running_geo["plane"]+1
-                                self.running_geo["total"] = self.running_geo["total"]+1
-                                return True
-                            else:
-                                return True
+                        area1 = self.feat.width*self.feat.height
+                        area2 = compare_feat.feat.width*compare_feat.feat.height
+
+                        if(area1/area2 < 0.05**2 or area1/area2 > 20**2):
+                            return False
+                        else:
+                            d_maior = np.amax([self.feat.width,self.feat.height, compare_feat.feat.width,compare_feat.feat.height])
+                            if(np.linalg.norm((self.feat.centroid - compare_feat.feat.centroid)) < d_maior):
+                                #print("Encontrou correspondencia")
+                                #print("Original feature: "+str(self.feat.equation))
+                                #print("Candidate feature: "+str(compare_feat.feat.equation))
+                                #print("Erro "+str(errorNormal))
+                                if(self.feat.append_plane(compare_feat, self.running_geo["total"])):
+                                    self.running_geo["plane"] = self.running_geo["plane"]+1
+                                    self.running_geo["total"] = self.running_geo["total"]+1
+                                    return True
+                                else:
+                                    return True
             if isinstance(compare_feat.feat,Cylinder):
                 cyl = compare_feat.feat
                 pla = self.feat

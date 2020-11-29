@@ -164,7 +164,7 @@ class Cylinder:
         # # projNormal = np.dot((np.dot(centroid, forceAxisVector)/(np.linalg.norm(forceAxisVector)**2)), forceAxisVector)
         un = (normals*vecC_stakado).sum(1)
         m_nn_m = np.linalg.norm(self.normal)**2
-        unn = (un*self.normal[:,np.newaxis]).T
+        unn = (un*np.asarray(self.normal)[:,np.newaxis]).T
         projNormal = normals - np.divide(unn,m_nn_m)
         pcd.normals = o3d.utility.Vector3dVector(projNormal)
         #pcd.normalize_normals()

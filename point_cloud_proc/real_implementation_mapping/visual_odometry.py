@@ -119,7 +119,7 @@ for a in range(len(list_rgb)-1):
     i = a
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
-    pc1 = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=3, showImages = False)
+    pc1 = open_pointCloud_from_rgb_and_depth(color_raw, depth_raw, meters_trunc=3, showImages = True)
 
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i+1)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i+1)+"_depth.png")

@@ -129,11 +129,11 @@ class GlobalScene:
             vel_angular_body[1] = - vel_angular_body[1]
             vel_linear_body[1] = - vel_linear_body[1]
             vel_linear_body[2] = - vel_linear_body[2]
-        else:
-            vel_angular_body[2] = - vel_angular_body[2]
-            vel_angular_body[1] = - vel_angular_body[1]
-            vel_linear_body[1] = - vel_linear_body[1]
-            vel_linear_body[2] = - vel_linear_body[2]
+        # else:
+        #     vel_angular_body[2] = - vel_angular_body[2]
+        #     vel_angular_body[1] = - vel_angular_body[1]
+        #     vel_linear_body[1] = - vel_linear_body[1]
+        #     vel_linear_body[2] = - vel_linear_body[2]
 
         # print("vel_angular_body: "+str(vel_angular_body))
         # print("vel_linear_body: "+str(vel_linear_body))

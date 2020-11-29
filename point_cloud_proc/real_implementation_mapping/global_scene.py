@@ -47,17 +47,21 @@ odom = Odometer(pastanome)
 
 
 for a in range(nImages):
-    i = a
-    print(odom.get_odometry(i))
+    i = a+4
+    m_trans = odom.get_odometry(i, method="auto", icp_refine=True, max_tentativas_ransac = 10)
+    t_dur = 1
+    x,y,z,yaw,pitch,roll = get_xyz_yawpitchroll_from_transf_matrix(m_trans)
+    c_linear = np.asarray([z, x, y])
+    c_angular = np.asarray([yaw,roll,pitch])
     color_raw = o3d.io.read_image(pastanome+"/"+str(i+1)+"_rgb.png")
     depth_raw = o3d.io.read_image(pastanome+"/"+str(i+1)+"_depth.png")
     pcd = open_pointCloud_from_rgb_and_depth(
-        color_raw, depth_raw, meters_trunc=2, showImages = False)
+        color_raw, depth_raw, meters_trunc=3, showImages = False)
     #o3d.visualization.draw_geometries([pcd])
 
     #print("angulo real: "+str(df['ang_x'].values[i]-iangx)+", "+str(df['ang_y'].values[i]-iangy)+", "+str(df['ang_z'].values[i]-iangz))
     #break
-    #gc.add_pcd(pcd, c_linear, c_angular, t_dur, i)
+    gc.add_pcd(pcd, c_linear, c_angular, t_dur, i+1)
 
     #last_angx = df['ang_x'].values[i]
     #last_angy = df['ang_y'].values[i]

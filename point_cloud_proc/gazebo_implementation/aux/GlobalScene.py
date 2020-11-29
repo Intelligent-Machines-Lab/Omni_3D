@@ -52,8 +52,8 @@ class GlobalScene:
         rotatex = 500
         rotatey = 550
         rotatey2 = 100
-        showimages = True
-        save_image = False
+        showimages = False
+        save_image = True
         vis_original = o3d.visualization.Visualizer()
 
         vis_original.create_window(window_name='Original', width=960, height=540, left=0, top=0)
@@ -162,16 +162,16 @@ class GlobalScene:
         # print("vel_angular_inertial: "+ str(vel_angular_inertial))
         # print("vel_linear_inertial: "+ str(vel_linear_inertial))
 
-
+        # Propagação 
         atual_loc = last_loc + vel_linear_inertial*duration
         atual_angulo = last_angulo + vel_angular_inertial*duration
-        print("atual_loc: "+ str(atual_loc))
-        print("atual_angulo: "+ str(atual_angulo))
-        print("last_loc: "+ str(last_loc))
-        print("last_angulo: "+ str(last_angulo))
-        print("vel_linear_inertial: "+ str(vel_linear_inertial))
-        print("vel_angular_inertial: "+ str(vel_angular_inertial))
-        print("duration: "+ str(duration))
+        # print("atual_loc: "+ str(atual_loc))
+        # print("atual_angulo: "+ str(atual_angulo))
+        # print("last_loc: "+ str(last_loc))
+        # print("last_angulo: "+ str(last_angulo))
+        # print("vel_linear_inertial: "+ str(vel_linear_inertial))
+        # print("vel_angular_inertial: "+ str(vel_angular_inertial))
+        # print("duration: "+ str(duration))
 
 
         from_camera_to_inertial(pcd)
