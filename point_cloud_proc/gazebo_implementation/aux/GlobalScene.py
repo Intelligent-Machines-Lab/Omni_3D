@@ -9,6 +9,7 @@ from aux.cylinder import Cylinder
 from aux.plane import Plane
 from aux.generic_feature import Generic_feature
 from aux.aux import *
+from aux.aux_ekf import *
 from aux.cuboid import Cuboid
 import threading
 from tkinter import *
@@ -23,6 +24,7 @@ class GlobalScene:
         self.list_scenes = []
         self.scenes_rotation = [] # List of euclidian angles
         self.scenes_translation = [] # list of translations
+        self.x_m, self.P_m  = init_x_P()
 
         self.pcd_total = []
         self.groundNormal = []
@@ -40,20 +42,14 @@ class GlobalScene:
         self.iatual = 0
 
 
-
-
-        
-
-
-
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
         # o3d.visualization.draw_geometries([pcd])
         rotatex = 500
         rotatey = 550
         rotatey2 = 100
-        showimages = False
-        save_image = True
+        showimages = True
+        save_image = False
         vis_original = o3d.visualization.Visualizer()
 
         vis_original.create_window(window_name='Original', width=960, height=540, left=0, top=0)
@@ -136,9 +132,12 @@ class GlobalScene:
         self.iatual = i
         last_loc = np.asarray([0, 0, 0])
         last_angulo = np.asarray([0, 0, 0])
+        x_m_last, P_m_last = init_x_P()
         if not len(self.scenes_translation) == 0:
             last_loc = self.scenes_translation[-1]
             last_angulo = self.scenes_rotation[-1]
+            x_m_last = self.x_m
+            P_m_last = self.P_m
 
 
         # print("Odometria linear: "+str(commands_odom_linear))
@@ -159,19 +158,48 @@ class GlobalScene:
         vel_angular_inertial = np.dot(get_rotation_angvel_matrix_bti(last_angulo),vel_angular_body.T)
         vel_linear_inertial = np.dot(get_rotation_matrix_bti(last_angulo),vel_linear_body.T)
 
+
+        # KALMAN FILTER --------------------------------------------
+        u = np.asarray([[vel_linear_body.T[0]],
+                        [vel_angular_body.T[2]]])
+
+        print("x_m_last: \n",x_m_last)
+        print("P_m_last: \n",P_m_last)
+        print("u: \n",u)
+
+        Fx = get_Fx(x_m_last, u)
+        Fv = get_Fv(x_m_last, u)
+        V = get_V()
+
+        x_p = apply_f(x_m_last, u) # Propagation
+        print("x_p: \n",x_p)
+        P_p = Fx @ P_m_last @ Fx.T +  Fv @ V @ Fv.T
+
+        self.P_m = P_p
+        self.x_m = x_p
+
+        print("f: ",x_p)
+        print("P: ",P_p)
+
+
+
+
         # print("vel_angular_inertial: "+ str(vel_angular_inertial))
         # print("vel_linear_inertial: "+ str(vel_linear_inertial))
 
         # Propagação 
-        atual_loc = last_loc + vel_linear_inertial*duration
-        atual_angulo = last_angulo + vel_angular_inertial*duration
-        # print("atual_loc: "+ str(atual_loc))
-        # print("atual_angulo: "+ str(atual_angulo))
-        # print("last_loc: "+ str(last_loc))
-        # print("last_angulo: "+ str(last_angulo))
-        # print("vel_linear_inertial: "+ str(vel_linear_inertial))
-        # print("vel_angular_inertial: "+ str(vel_angular_inertial))
-        # print("duration: "+ str(duration))
+        atual_loc = [x_p[0,0], x_p[1,0], 0]
+        atual_angulo = [0, 0, x_p[2,0]]
+        #atual_loc = last_loc + vel_linear_inertial*duration
+        #atual_angulo = last_angulo + vel_angular_inertial*duration
+
+        print("atual_loc: "+ str(atual_loc))
+        print("atual_angulo: "+ str(atual_angulo))
+        #print("last_loc: "+ str(last_loc))
+        #print("last_angulo: "+ str(last_angulo))
+        #print("vel_linear_inertial: "+ str(vel_linear_inertial))
+        #print("vel_angular_inertial: "+ str(vel_angular_inertial))
+        #print("duration: "+ str(duration))
 
 
         from_camera_to_inertial(pcd)

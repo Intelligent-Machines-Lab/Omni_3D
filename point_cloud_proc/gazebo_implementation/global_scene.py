@@ -19,7 +19,7 @@ import threading #thread module imported
 import traceback
 import _thread
 
-nomepasta = "gazebo_dataset3"
+nomepasta = "gazebo_dataset_planes"
 list_depth = sorted(glob.glob(nomepasta+"/*_depth.png"))
 list_rgb = sorted(glob.glob(nomepasta+"/*_rgb.png"))
 
@@ -48,7 +48,7 @@ for a in range(nImages):
     #depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
 
     pcd = open_pointCloud_from_rgb_and_depth(
-        color_raw, depth_raw, meters_trunc=7, showImages = False)
+        color_raw, depth_raw, meters_trunc=10, showImages = False)
 
     if use_gaussian_noise:
         pontos = np.asarray(pcd.points)
@@ -61,16 +61,16 @@ for a in range(nImages):
             ponto[2] = ponto[2] + np.random.normal(mean, sigma, 1)
             #ponto[2] = ponto[2] + np.random.logistic(0,sigma/10)
 
-    diameter = np.linalg.norm(np.asarray(pcd.get_max_bound()) - np.asarray(pcd.get_min_bound()))
-    #print("Define parameters used for hidden_point_removal")
-    camera = [0, 0, diameter]
-    radius = diameter *700
+        diameter = np.linalg.norm(np.asarray(pcd.get_max_bound()) - np.asarray(pcd.get_min_bound()))
+        #print("Define parameters used for hidden_point_removal")
+        camera = [0, 0, diameter]
+        radius = diameter *700
 
-    #print("Get all points that are visible from given view point")
-    _, pt_map = pcd.hidden_point_removal(camera, radius)
+        #print("Get all points that are visible from given view point")
+        _, pt_map = pcd.hidden_point_removal(camera, radius)
 
-    #print("Visualize result")
-    pcd = pcd.select_by_index(pt_map)
+        #print("Visualize result")
+        pcd = pcd.select_by_index(pt_map)
     #o3d.visualization.draw_geometries([pcd])
 
 
