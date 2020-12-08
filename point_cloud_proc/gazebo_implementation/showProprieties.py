@@ -2,6 +2,9 @@ import pickle
 from tkinter import *
 from tkinter import ttk
 import time
+from threading import Thread
+from time import sleep
+import numpy as np
 
 
 def showGUI(prop):
@@ -40,6 +43,7 @@ while True:
     f = open('feat.pckl', 'rb')
     obj = pickle.load(f)
     f.close()
+
     print(obj)
     showGUI(obj)
     time.sleep(0.1)

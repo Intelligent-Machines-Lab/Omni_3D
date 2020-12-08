@@ -40,6 +40,8 @@ class GlobalScene:
         self.updated_global = threading.Event()
         self.updated_global.clear()
         self.iatual = 0
+        self.x_p_list = []
+        self.P_p_list = []
 
 
     def custom_draw_geometry(self):
@@ -178,9 +180,20 @@ class GlobalScene:
         self.P_m = P_p
         self.x_m = x_p
 
+        self.x_p_list.append(x_p)
+        self.P_p_list.append(P_p)
+
         print("f: ",x_p)
         print("P: ",P_p)
+        nsalva = {}
+        nsalva['x_p_list'] =  self.x_p_list
+        nsalva['P_p_list'] =  self.P_p_list
 
+        f = open('ekf.pckl', 'wb')
+        pickle.dump(nsalva, f)
+        f.close()
+
+        # ----------------------------------------------------------
 
 
 

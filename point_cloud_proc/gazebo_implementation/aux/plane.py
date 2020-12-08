@@ -147,7 +147,7 @@ class Plane:
 
     def getProrieties(self):
         return {"equation": self.equation,"nPoints":self.inliers.shape[0], "color": self.color, "centroid":self.centroid,
-                "height": self.height, "width": self.width}
+                "height": self.height, "width": self.width, "center2d": self.center2d, "rot_angle":self.rot_angle}
 
     def get_height(self, ground_normal):
         pts_Z = aux.rodrigues_rot(self.points_main, ground_normal, [0,0,1])
