@@ -206,8 +206,8 @@ class GlobalScene:
         #atual_loc = last_loc + vel_linear_inertial*duration
         #atual_angulo = last_angulo + vel_angular_inertial*duration
 
-        print("atual_loc: "+ str(atual_loc))
-        print("atual_angulo: "+ str(atual_angulo))
+        #print("atual_loc: "+ str(atual_loc))
+        #print("atual_angulo: "+ str(atual_angulo))
         #print("last_loc: "+ str(last_loc))
         #print("last_angulo: "+ str(last_angulo))
         #print("vel_linear_inertial: "+ str(vel_linear_inertial))
@@ -233,13 +233,31 @@ class GlobalScene:
         ls.findSecundaryPlanes()
         self.ground_normal = ls.groundNormal
         self.ground_equation = ls.groundEquation
-        print("GND EQUATION: ", self.ground_equation)
+        #print("GND EQUATION: ", self.ground_equation)
 
 
         scene_features=[]
         
         for x in range(len(ls.mainPlanes)):
+
+            # print("\nUSANDO g")
+            # zp = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
+            # print("PLANO observado: ", zp)
+            # N2 = apply_g(self.x_m, zp)
+            # print("PLANO no frame incercial: ", N2)
+
+
+            # print("\nROTAÇÃO DE PONTOS EXTREMOS: (ISSO TA CERTO DE CERTEZA)")
+            # N = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
+            # print("PLANO observado: ", N)
             ls.mainPlanes[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+            # N = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
+            # print("PLANO no frame incercial: ", N)
+
+            # print("\nUSANDO h")
+            # zp = apply_h(self.x_m, N2)
+            # print("PLANO no frame incercial: ", N2)
+            # print("PLANO observado: ", zp,"\n")
             gfeature = Generic_feature(ls.mainPlanes[x], ground_equation=self.ground_equation)
             scene_features.append(gfeature)
 
@@ -259,7 +277,8 @@ class GlobalScene:
                 ja_existe = False
                 list_to_delete = []
                 for i_global in range(len(self.features_objects)):
-                    if(self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena])):
+                    associou, innovation = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.x_m)
+                    if(associou):
                         ja_existe = True
                         if isinstance(scene_features[i_cena].feat,Cylinder) and isinstance(self.features_objects[i_global].feat,Plane):
                             # Remove all planes that can be part of this cylinder
@@ -340,7 +359,8 @@ class GlobalScene:
                                                     g = Generic_feature(cub, self.ground_equation)
                                                     for ob_plane_clear in self.features_objects:
                                                         if isinstance(ob_plane_clear.feat, Plane):
-                                                            if(g.verifyCorrespondence(ob_plane_clear)):
+                                                            associou, innovation = g.verifyCorrespondence(ob_plane_clear, self.x_m)
+                                                            if(associou):
                                                                 list_to_delete.append(ob_plane_clear)
                                                     self.features_objects.append(g)
                                                     
@@ -375,7 +395,8 @@ class GlobalScene:
                     #if(self.features_objects[i_global1].self.running_geo[""])
                     for i_global2 in range(len(self.features_objects)):
                         if(not (i_global1 == i_global2)):
-                            if(self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2])):
+                            associou, innovation = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.x_m)
+                            if(associou):
                                 list_to_delete.append(self.features_objects[i_global2])
                                 break
                     if list_to_delete:

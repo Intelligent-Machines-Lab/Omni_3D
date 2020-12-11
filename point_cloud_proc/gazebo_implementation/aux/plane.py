@@ -142,6 +142,8 @@ class Plane:
         self.points_main = inliers_plano_desrotacionado
         self.centroid = np.mean(self.points_main, axis=0)
 
+        
+
 
 
 

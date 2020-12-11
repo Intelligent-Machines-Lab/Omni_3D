@@ -41,26 +41,61 @@ def get_Fv(x, u):
                      [0, 1]])
     return Fv
 
+
+def apply_h(x, N):
+    d = np.linalg.norm(N)
+    a = N[0]/d
+    b = N[1]/d
+    c = N[2]/d
+
+    ux = a*(d + a*x[0] + b*x[1])
+    uy = b*(d + a*x[0] + b*x[1])
+    uz = c*(d + a*x[0] + b*x[1])
+
+    zp = np.asarray( [np.cos(x[2])*ux + np.sin(x[2])*uy,
+                      -np.sin(x[2])*ux + np.cos(x[2])*uy,
+                      uz])
+    return zp
+
+
+def apply_g(x, Zp):
+    d = np.linalg.norm(Zp)
+    a = Zp[0]/d
+    b = Zp[1]/d
+    c = Zp[2]/d
+
+    ux = a*(d - a*x[0] - b*x[1])
+    uy = b*(d - a*x[0] - b*x[1])
+    uz = c*(d - a*x[0] - b*x[1])
+
+    N = np.asarray( [np.cos(x[2])*ux - np.sin(x[2])*uy,
+                      +np.sin(x[2])*ux + np.cos(x[2])*uy,
+                      uz])
+    return N
+
+
+
+
 def get_Hx_plane(x, N):
     d = np.linalg.norm(N)
     a = N[0]/d
     b = N[1]/d
     c = N[2]/d
 
-    ux = a*(d-a*x[0] - b*x[1] - c*x[2])
-    uy = b*(d-a*x[0] - b*x[1] - c*x[2])
-    uz = c*(d-a*x[0] - b*x[1] - c*x[2])
+    ux = a*(d+a*x[0] + b*x[1])
+    uy = b*(d+a*x[0] + b*x[1])
+    uz = c*(d+a*x[0] + b*x[1])
 
-    hx11 = -a*a*np.cos(x[2]) - a*b*np.sin(x[2])
-    hx12 = -a*b*np.cos((x[2])) - b*b*np.sin((x[2]))
-    hx13 = -np.sin(x[2])*ux - np.sin(x[2])*uy 
+    hx11 = a*a*np.cos(x[2]) + a*b*np.sin(x[2])
+    hx12 = a*b*np.cos((x[2])) + b*b*np.sin((x[2]))
+    hx13 = -np.sin(x[2])*ux + np.cos(x[2])*uy 
 
-    hx21 = a*a* np.sin(x[2]) - a*b* np.cos(x[2])
-    hx22 = a*b* np.sin(x[2]) - b*b* np.cos(x[2])
+    hx21 = -a*a*np.sin(x[2]) + a*b* np.cos(x[2])
+    hx22 = -a*b*np.sin(x[2]) + b*b* np.cos(x[2])
     hx23 = -np.cos(x[2]) *ux - np.sin(x[2])*uy
 
-    hx31 = -c*a
-    hx32 = -b*c
+    hx31 = c*a
+    hx32 = b*c
     hx33 = 0
 
     Hx = np.asarray([[hx11, hx12, hx13],
