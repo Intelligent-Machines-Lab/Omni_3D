@@ -10,15 +10,16 @@ from aux.aux_ekf import *
 
 class Generic_feature:
 
-    def __init__(self, feat, ground_equation = [0, 0, 0, 0]):
+    def __init__(self, feat, id=0, ground_equation = [0, 0, 0, 0]):
         self.ground_equation = ground_equation
         self.feat = feat
+        self.id = id
         self.running_geo = {"total": 1, "plane":0, "cylinder":0, "cuboid":0}
         if isinstance(self.feat,Plane):
             self.running_geo['plane'] = 1
 
 
-    def verifyCorrespondence(self, compare_feat, x = []):
+    def verifyCorrespondence(self, compare_feat, ekf = ekf):
         if isinstance(self.feat,Plane):
             if isinstance(compare_feat.feat,Plane):
 
@@ -52,12 +53,19 @@ class Generic_feature:
                                 #print("Original feature: "+str(self.feat.equation))
                                 #print("Candidate feature: "+str(compare_feat.feat.equation))
                                 #print("Erro "+str(errorNormal))
-                                if(self.feat.append_plane(compare_feat, self.running_geo["total"])):
+                                Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
+                                Z = apply_h(ekf.x_m, Z)
+                                N = ekf.upload_plane(Z, self.id)
+                                d = np.linalg.norm(N)
+                                a = N[0,0]/d
+                                b = N[1,0]/d
+                                c = N[2,0]/d
+                                neweq = [a, b, c, d]
+                                if(self.feat.append_plane(compare_feat, neweq)):
                                     self.running_geo["plane"] = self.running_geo["plane"]+1
                                     self.running_geo["total"] = self.running_geo["total"]+1
-                                    z_medido = apply_h(x, compare_feat.feat.equation[3]*np.asarray([compare_feat.feat.equation[0], compare_feat.feat.equation[1], compare_feat.feat.equation[2]]))
-                                    z_prev = apply_h(x, self.feat.equation[3]*np.asarray([self.feat.equation[0], self.feat.equation[1], self.feat.equation[2]]))
-                                    innovation = z_medido - z_prev
+
+                                    innovation = 0
                                     print("INNOVATION:   :   ", innovation)
                                     return True, innovation
                                 else:

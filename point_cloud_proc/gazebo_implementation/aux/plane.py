@@ -188,7 +188,7 @@ class Plane:
         return mesh_box
 
 
-    def append_plane(self, plano, nvezes):
+    def append_plane(self, plano, neweq = [], nvezes=0):
         #print("Shape antes de append: "+str(self.inliers.shape[0]))
         
         # #print("Shape depois de append: "+str(self.inliers.shape[0]))
@@ -199,7 +199,7 @@ class Plane:
 
         # dimin = np.amin([width, height])
         # if(np.linalg.norm(centroid_pontos-centroid_retangulo)<dimin*0.1):
-        usa_media = True
+        usa_media = False
         points = plano.feat.points_main
         if(usa_media):
             eqplano2 = plano.feat.equation
@@ -225,7 +225,8 @@ class Plane:
             # Muda os dois planos para essa orientação e posição:
             #self.points_main = aux.rodrigues_rot(self.points_main, [eqplano1[0], eqplano1[1], eqplano1[2]], [self.equation[0], self.equation[1], self.equation[2]])
             #points = aux.rodrigues_rot(points, [eqplano2[0], eqplano2[1], eqplano2[2]], [self.equation[0], self.equation[1], self.equation[2]])
-
+        else:
+            self.equation = neweq
         provisorio = copy.deepcopy(np.append(self.points_main, points, axis=0))
         center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(provisorio)
         self.center2d = center_point

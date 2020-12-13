@@ -24,7 +24,7 @@ class GlobalScene:
         self.list_scenes = []
         self.scenes_rotation = [] # List of euclidian angles
         self.scenes_translation = [] # list of translations
-        self.x_m, self.P_m  = init_x_P()
+        
 
         self.pcd_total = []
         self.groundNormal = []
@@ -40,8 +40,9 @@ class GlobalScene:
         self.updated_global = threading.Event()
         self.updated_global.clear()
         self.iatual = 0
-        self.x_p_list = []
-        self.P_p_list = []
+
+        self.ekf = ekf()
+
 
 
     def custom_draw_geometry(self):
@@ -136,10 +137,10 @@ class GlobalScene:
         last_angulo = np.asarray([0, 0, 0])
         x_m_last, P_m_last = init_x_P()
         if not len(self.scenes_translation) == 0:
-            last_loc = self.scenes_translation[-1]
+            # last_loc = self.scenes_translation[-1]
             last_angulo = self.scenes_rotation[-1]
-            x_m_last = self.x_m
-            P_m_last = self.P_m
+            # x_m_last = self.ekf.x_m
+            # P_m_last = self.P_m
 
 
         # print("Odometria linear: "+str(commands_odom_linear))
@@ -157,41 +158,22 @@ class GlobalScene:
         # print("vel_angular_body: "+str(vel_angular_body))
         # print("vel_linear_body: "+str(vel_linear_body))
         # Change to inertial frame
-        vel_angular_inertial = np.dot(get_rotation_angvel_matrix_bti(last_angulo),vel_angular_body.T)
-        vel_linear_inertial = np.dot(get_rotation_matrix_bti(last_angulo),vel_linear_body.T)
+        # vel_angular_inertial = np.dot(get_rotation_angvel_matrix_bti(last_angulo),vel_angular_body.T)
+        # vel_linear_inertial = np.dot(get_rotation_matrix_bti(last_angulo),vel_linear_body.T)
 
 
         # KALMAN FILTER --------------------------------------------
         u = np.asarray([[vel_linear_body.T[0]],
                         [vel_angular_body.T[2]]])
 
-        print("x_m_last: \n",x_m_last)
-        print("P_m_last: \n",P_m_last)
-        print("u: \n",u)
-
-        Fx = get_Fx(x_m_last, u)
-        Fv = get_Fv(x_m_last, u)
-        V = get_V()
-
-        x_p = apply_f(x_m_last, u) # Propagation
-        print("x_p: \n",x_p)
-        P_p = Fx @ P_m_last @ Fx.T +  Fv @ V @ Fv.T
-
-        self.P_m = P_p
-        self.x_m = x_p
-
-        self.x_p_list.append(x_p)
-        self.P_p_list.append(P_p)
-
-        print("f: ",x_p)
-        print("P: ",P_p)
-        nsalva = {}
-        nsalva['x_p_list'] =  self.x_p_list
-        nsalva['P_p_list'] =  self.P_p_list
-
-        f = open('ekf.pckl', 'wb')
-        pickle.dump(nsalva, f)
-        f.close()
+        self.ekf.propagate(u)
+        print("zp teste:\n",np.asarray([[1], [0], [0]]))
+        # if self.ekf.num_total_features['plane'] > 3:
+        #     neweq = self.ekf.upload_plane(np.asarray([[1], [0], [0]]), 0)
+        #     print('neweq: ', neweq)
+            # self.ekf.upload_plane(np.asarray([[1], [0], [0]]), 1)
+            # self.ekf.upload_plane(np.asarray([[1], [0], [0]]), 2)
+        
 
         # ----------------------------------------------------------
 
@@ -201,8 +183,8 @@ class GlobalScene:
         # print("vel_linear_inertial: "+ str(vel_linear_inertial))
 
         # Propagação 
-        atual_loc = [x_p[0,0], x_p[1,0], 0]
-        atual_angulo = [0, 0, x_p[2,0]]
+        atual_loc = [self.ekf.x_p[0,0], self.ekf.x_p[1,0], 0]
+        atual_angulo = [0, 0, self.ekf.x_p[2,0]]
         #atual_loc = last_loc + vel_linear_inertial*duration
         #atual_angulo = last_angulo + vel_angular_inertial*duration
 
@@ -243,7 +225,7 @@ class GlobalScene:
             # print("\nUSANDO g")
             # zp = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
             # print("PLANO observado: ", zp)
-            # N2 = apply_g(self.x_m, zp)
+            # N2 = apply_g(self.ekf.x_m, zp)
             # print("PLANO no frame incercial: ", N2)
 
 
@@ -255,7 +237,7 @@ class GlobalScene:
             # print("PLANO no frame incercial: ", N)
 
             # print("\nUSANDO h")
-            # zp = apply_h(self.x_m, N2)
+            # zp = apply_h(self.ekf.x_m, N2)
             # print("PLANO no frame incercial: ", N2)
             # print("PLANO observado: ", zp,"\n")
             gfeature = Generic_feature(ls.mainPlanes[x], ground_equation=self.ground_equation)
@@ -277,7 +259,7 @@ class GlobalScene:
                 ja_existe = False
                 list_to_delete = []
                 for i_global in range(len(self.features_objects)):
-                    associou, innovation = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.x_m)
+                    associou, innovation = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.ekf)
                     if(associou):
                         ja_existe = True
                         if isinstance(scene_features[i_cena].feat,Cylinder) and isinstance(self.features_objects[i_global].feat,Plane):
@@ -287,7 +269,12 @@ class GlobalScene:
                             #self.features_objects.append(scene_features[i_cena])
                         #break
                 if(not ja_existe):
+                    if isinstance(scene_features[i_cena].feat,Plane):
+                        z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
+                        i = self.ekf.add_plane(z_medido)
+                        scene_features[i_cena].id = i
                     self.features_objects.append(scene_features[i_cena])
+
                 else:
                     if isinstance(scene_features[i_cena].feat,Cylinder) and list_to_delete:
                     # If already exists, delete all correspondences
@@ -296,6 +283,10 @@ class GlobalScene:
                     
         else:
             for i_cena in range(len(scene_features)):
+                if isinstance(scene_features[i_cena].feat,Plane):
+                    z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
+                    i = self.ekf.add_plane(z_medido)
+                    scene_features[i_cena].id = i
                 self.features_objects.append(scene_features[i_cena])
                 #self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
         self.fet_geo = []
@@ -359,7 +350,7 @@ class GlobalScene:
                                                     g = Generic_feature(cub, self.ground_equation)
                                                     for ob_plane_clear in self.features_objects:
                                                         if isinstance(ob_plane_clear.feat, Plane):
-                                                            associou, innovation = g.verifyCorrespondence(ob_plane_clear, self.x_m)
+                                                            associou, innovation = g.verifyCorrespondence(ob_plane_clear, self.ekf)
                                                             if(associou):
                                                                 list_to_delete.append(ob_plane_clear)
                                                     self.features_objects.append(g)
@@ -384,7 +375,7 @@ class GlobalScene:
                 found_cuboid = True
 
         # Map cleaning
-        if(i % 5 == 0):
+        if(i % 1 == 0):
             print("------------------------")
             print("TA FAZENDO MAP CLEANING")
             print("------------------------")
@@ -395,7 +386,7 @@ class GlobalScene:
                     #if(self.features_objects[i_global1].self.running_geo[""])
                     for i_global2 in range(len(self.features_objects)):
                         if(not (i_global1 == i_global2)):
-                            associou, innovation = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.x_m)
+                            associou, innovation = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.ekf)
                             if(associou):
                                 list_to_delete.append(self.features_objects[i_global2])
                                 break
@@ -414,7 +405,7 @@ class GlobalScene:
         self.scenes_translation.append(atual_loc)
         #self.fet_geo = []
         for ob in self.features_objects:
-            if(ob.running_geo["total"] >= 2):
+            if(ob.running_geo["total"] >= 0):
                 self.fet_geo.append(ob.feat.get_geometry())
 
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))

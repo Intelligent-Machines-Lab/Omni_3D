@@ -20,8 +20,22 @@ def axisEqual3D(ax):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
 def threaded_function(ekflist, prop):
-    x_p_list = np.asarray(ekflist['x_p_list'])
-    P_p_list = np.asarray(ekflist['P_p_list'])
+    x_p_list_total = ekflist['x_p_list']
+    print(x_p_list_total)
+    P_p_list_total = ekflist['P_p_list']
+    x_p_list = []
+    P_p_list = []
+    for x_p in x_p_list_total:
+        x_p_list.append(x_p[:3, :])
+    x_p_list = np.asarray(x_p_list)
+
+
+    for p_p in P_p_list_total:
+        P_p_list.append(p_p[:3, :3])
+    P_p_list = np.asarray(P_p_list)
+
+    print('x_p_list: \n',x_p_list)
+    #print('P_p_list: \n',x_p_list)
 
     xx_p = x_p_list[:, 0, 0]
     xy_p = x_p_list[:, 1, 0]
@@ -38,14 +52,16 @@ def threaded_function(ekflist, prop):
     print('py', ppy)
     print('py', pptheta)
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(14,7))
 
 
-    gs = fig.add_gridspec(3,2)
+    gs = fig.add_gridspec(3,3)
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[1, 0])
     ax3 = fig.add_subplot(gs[2, 0])
-    ax4 = fig.add_subplot(gs[:, 1], projection='3d')
+    ax4 = fig.add_subplot(gs[:2, 1:], projection='3d')
+    ax5 = fig.add_subplot(gs[2, 1])
+    ax6 = fig.add_subplot(gs[2, 2])
 
     fig.suptitle('Estados')
 
@@ -76,7 +92,7 @@ def threaded_function(ekflist, prop):
         if(isinstance(prop[key], list)): # if is a list
             if((key == "planes")):
                 for o in range(len(prop[key])):
-                    print("EQ. DO PLANO:",prop[key][o]["equation"])
+                    # print("EQ. DO PLANO:",prop[key][o]["equation"])
                     eq = prop[key][o]["equation"]
                     a,b,c,d = 0, 0, 1, 0
 
@@ -92,14 +108,14 @@ def threaded_function(ekflist, prop):
                     pos_rot = np.dot(ROT1,positions)
                     center_point = np.asarray([prop[key][o]["center2d"][0], prop[key][o]["center2d"][1], 0])
                     center_point = np.stack([center_point]*pos_rot[0, :].shape[0],0)
-                    print("Antes:", pos_rot[:, :3])
+                    # print("Antes:", pos_rot[:, :3])
                     pos_rot = pos_rot + center_point.T
-                    print("Depois:", pos_rot[:, :3])
+                    # print("Depois:", pos_rot[:, :3])
 
                     deslocd = np.asarray([0, 0, -eq[3]])
                     deslocd = np.stack([deslocd]*pos_rot[0, :].shape[0],0)
                     pos_rot = pos_rot + deslocd.T
-                    print("Depois deslocadod :", pos_rot[:, :3])
+                    # print("Depois deslocadod :", pos_rot[:, :3])
                     ROT2 = get_rotationMatrix_from_vectors([0, 0, 1], [eq[0], eq[1], eq[2]])
                     pos_rot = np.dot(ROT2,pos_rot)
 
@@ -122,10 +138,30 @@ def threaded_function(ekflist, prop):
                 break
     ax4.legend(loc="upper right")
     ax4.grid()
+    xz_p =  np.stack([0]*xy_p.shape[0],0)
+    ax4.plot(xx_p, xy_p,xz_p, "--")
+    ax4.scatter(xx_p[-1], xy_p[-1],xz_p[-1], marker='o')
+    ax4.view_init(-140, -30)
+
+
     axisEqual3D(ax4)
+    
+    #print("ULTIMO P:\n",P_p_list_total[-1])
+    ax5.matshow(P_p_list_total[-1])
+
+    totap = []
+    for p_p in P_p_list:
+        # print('p_p', p_p)
+        totap.append(np.sqrt(np.linalg.det(p_p)))
+
+    ax6.plot(totap, label='Incerteza')
+    ax6.legend(loc="upper right")
+    ax6.grid()
+
+
     plt.show()
-    print("xp: ", x_p_list)
-    print("pp: ", P_p_list)
+    # print("xp: ", x_p_list)
+    # print("pp: ", P_p_list)
 
 
 while True:

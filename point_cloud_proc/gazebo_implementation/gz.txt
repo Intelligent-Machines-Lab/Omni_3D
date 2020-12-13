@@ -1,0 +1,133 @@
+dh1dnx =
+ 
+sin(psi)*((Ny*x)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2) - cos(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Nx*x)/(Nx^2 + Ny^2 + Nz^2) - 1)
+ 
+ 
+dh1dnx =
+ 
+(cos(psi)*(2*x*a^3 + 2*b*y*a^2 - 2*x*a + d - b*y))/d - (b*sin(psi)*(2*x*a^2 + 2*b*y*a - x))/d
+ 
+
+l =
+
+    '\frac{\cos\left(\mathrm{psi}\right)\,\left(2\,x\,a^3+2\,b\,y\,a^2-2\,x\,a+d-b\,y\right)}{d}-\frac{b\,\sin\left(\mathrm{psi}\right)\,\left(2\,x\,a^2+2\,b\,y\,a-x\right)}{d}'
+
+ 
+dh1dny =
+ 
+sin(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Ny^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Ny*y)/(Nx^2 + Ny^2 + Nz^2) - 1) - cos(psi)*((Nx*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2)
+ 
+ 
+dh1dny =
+ 
+(a*cos(psi)*(2*y*b^2 + 2*a*x*b - y))/d - (sin(psi)*(2*y*b^3 + 2*a*x*b^2 - 2*y*b + d - a*x))/d
+ 
+
+l =
+
+    '\frac{a\,\cos\left(\mathrm{psi}\right)\,\left(2\,y\,b^2+2\,a\,x\,b-y\right)}{d}-\frac{\sin\left(\mathrm{psi}\right)\,\left(2\,y\,b^3+2\,a\,x\,b^2-2\,y\,b+d-a\,x\right)}{d}'
+
+ 
+dh1dnz =
+ 
+(2*Nx*Nz*cos(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (2*Ny*Nz*sin(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2
+ 
+ 
+dh1dnz =
+ 
+(2*c*(a*cos(psi) - b*sin(psi))*(a*x + b*y))/d
+ 
+
+l =
+
+    '\frac{2\,c\,\left(a\,\cos\left(\mathrm{psi}\right)-b\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x+b\,y\right)}{d}'
+
+ 
+dh2dnx =
+ 
+- sin(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Nx*x)/(Nx^2 + Ny^2 + Nz^2) - 1) - cos(psi)*((Ny*x)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2)
+ 
+ 
+dh2dnx =
+ 
+(sin(psi)*(2*x*a^3 + 2*b*y*a^2 - 2*x*a + d - b*y))/d + (b*cos(psi)*(2*x*a^2 + 2*b*y*a - x))/d
+ 
+
+l =
+
+    '\frac{\sin\left(\mathrm{psi}\right)\,\left(2\,x\,a^3+2\,b\,y\,a^2-2\,x\,a+d-b\,y\right)}{d}+\frac{b\,\cos\left(\mathrm{psi}\right)\,\left(2\,x\,a^2+2\,b\,y\,a-x\right)}{d}'
+
+ 
+dh2dny =
+ 
+- sin(psi)*((Nx*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2) - cos(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Ny^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Ny*y)/(Nx^2 + Ny^2 + Nz^2) - 1)
+ 
+ 
+dh2dny =
+ 
+(cos(psi)*(2*y*b^3 + 2*a*x*b^2 - 2*y*b + d - a*x))/d + (a*sin(psi)*(2*y*b^2 + 2*a*x*b - y))/d
+ 
+
+l =
+
+    '\frac{\cos\left(\mathrm{psi}\right)\,\left(2\,y\,b^3+2\,a\,x\,b^2-2\,y\,b+d-a\,x\right)}{d}+\frac{a\,\sin\left(\mathrm{psi}\right)\,\left(2\,y\,b^2+2\,a\,x\,b-y\right)}{d}'
+
+ 
+dh2dnz =
+ 
+(2*Ny*Nz*cos(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (2*Nx*Nz*sin(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2
+ 
+ 
+dh2dnz =
+ 
+(2*c*(b*cos(psi) + a*sin(psi))*(a*x + b*y))/d
+ 
+
+l =
+
+    '\frac{2\,c\,\left(b\,\cos\left(\mathrm{psi}\right)+a\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x+b\,y\right)}{d}'
+
+ 
+dh3dnx =
+ 
+(2*Nx*Nz*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (Nz*x)/(Nx^2 + Ny^2 + Nz^2)
+ 
+ 
+dh3dnx =
+ 
+(c*(2*x*a^2 + 2*b*y*a - x))/d
+ 
+
+l =
+
+    '\frac{c\,\left(2\,x\,a^2+2\,b\,y\,a-x\right)}{d}'
+
+ 
+dh3dny =
+ 
+(2*Ny*Nz*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (Nz*y)/(Nx^2 + Ny^2 + Nz^2)
+ 
+ 
+dh3dny =
+ 
+(c*(2*y*b^2 + 2*a*x*b - y))/d
+ 
+
+l =
+
+    '\frac{c\,\left(2\,y\,b^2+2\,a\,x\,b-y\right)}{d}'
+
+ 
+dh3dnz =
+ 
+(2*Nz^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) + 1
+ 
+ 
+dh3dnz =
+ 
+(d - a*x - b*y + 2*a*c^2*x + 2*b*c^2*y)/d
+ 
+
+l =
+
+    '\frac{d-a\,x-b\,y+2\,a\,c^2\,x+2\,b\,c^2\,y}{d}'
