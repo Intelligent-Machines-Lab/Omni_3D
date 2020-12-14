@@ -3,6 +3,7 @@ import numpy as np
 import random
 import copy 
 from aux import *
+from aux.aux_ekf import *
 from aux.qhull_2d import *
 from aux.min_bounding_rect import *
 import matplotlib.pyplot as plt
@@ -52,6 +53,12 @@ class Plane:
             vecC = vecC / np.linalg.norm(vecC)
             k = -np.sum(np.multiply(vecC, pt_samples[1,:]))
             plane_eq = [vecC[0], vecC[1], vecC[2], k]
+            N = k*vecC
+            da = np.linalg.norm(N)
+            aa = N[0]/da
+            ba = N[1]/da
+            ca = N[2]/da
+            plane_eq = [aa, ba, ca, da]
             
             #print(plane_eq)
 
@@ -126,14 +133,26 @@ class Plane:
 
         return best_eq, best_inliers, valid
 
-    def move(self, rotMatrix=[[1,0,0],[0, 1, 0],[0, 0, 1]], tranlation=[0, 0, 0]):
+    def move(self, ekf):
+        atual_loc = [ekf.x_m[0,0], ekf.x_m[1,0], 0]
+        atual_angulo = [0, 0, ekf.x_m[2,0]]
+        rotMatrix = aux.get_rotation_matrix_bti(atual_angulo)
+        tranlation = atual_loc
+
+
+
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
         self.points_main = np.dot(self.points_main, rotMatrix.T) + tranlation
-        vec = np.dot(rotMatrix, [self.equation[0], self.equation[1], self.equation[2]]) #+ tranlation
+        
         self.centroid = np.mean(self.inliers, axis=0)
         #d = self.equation[3] + np.dot(vec, tranlation)
-        d = -np.sum(np.multiply(vec, self.centroid))
-        self.equation = [vec[0], vec[1], vec[2], d]
+        Z = self.equation[3]*np.asarray([[self.equation[0]],[self.equation[1]],[self.equation[2]]])
+        N = apply_g(ekf.x_m, Z)
+        d = np.linalg.norm(N)
+        a = N[0,0]/d
+        b = N[1,0]/d
+        c = N[2,0]/d
+        self.equation = [a, b, c, d]
         center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(self.points_main)
         self.center2d = center_point
         self.rot_angle = rot_angle

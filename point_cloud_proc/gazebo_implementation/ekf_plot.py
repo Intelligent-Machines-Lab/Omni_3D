@@ -55,13 +55,15 @@ def threaded_function(ekflist, prop):
     fig = plt.figure(figsize=(14,7))
 
 
-    gs = fig.add_gridspec(3,3)
+    gs = fig.add_gridspec(4,3)
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[1, 0])
     ax3 = fig.add_subplot(gs[2, 0])
-    ax4 = fig.add_subplot(gs[:2, 1:], projection='3d')
+    ax4 = fig.add_subplot(gs[:2, 2], projection='3d')
     ax5 = fig.add_subplot(gs[2, 1])
     ax6 = fig.add_subplot(gs[2, 2])
+    ax7 = fig.add_subplot(gs[:2, 1])
+    ax8 = fig.add_subplot(gs[3, :])
 
     fig.suptitle('Estados')
 
@@ -96,7 +98,7 @@ def threaded_function(ekflist, prop):
                     eq = prop[key][o]["equation"]
                     a,b,c,d = 0, 0, 1, 0
 
-                    x = np.linspace(-prop[key][o]["width"],prop[key][o]["width"]/2,10)
+                    x = np.linspace(-prop[key][o]["width"]/2,prop[key][o]["width"]/2,10)
                     y = np.linspace(-prop[key][o]["height"]/2,prop[key][o]["height"]/2,10)
 
                     X,Y = np.meshgrid(x,y)
@@ -121,21 +123,30 @@ def threaded_function(ekflist, prop):
 
                     Xrot = pos_rot[0,:].reshape(X.shape)
                     Yrot = pos_rot[1,:].reshape(Y.shape)
+                    # Zrot = np.stack([0]*Z.shape[0]*Z.shape[1],0).reshape(Z.shape)
                     Zrot = pos_rot[2,:].reshape(Z.shape)
+                    
 
                     # print('X', X[:].shape)
                     # print('Y', Y[:].shape)
                     # print('Z', Z[:].shape)
-                    if(o == 0):
+                    if(np.abs(eq[2]) > 0.8):
                         alp = 0.3
                     else:
                         alp = 1
+                        ax7.contour(Yrot,Xrot, Zrot, 20, cmap='RdGy', linewidths=2)
+                    
                     surf = ax4.plot_surface(Xrot, Yrot, Zrot, alpha=alp)
 
                     # ax4.plot(xx_p, xy_p , label='Posição')
 
                     
                 break
+    ax7.grid()
+    ax7.axis('equal')
+    ax7.plot(xy_p, xx_p, "--")
+    ax7.scatter(xy_p[-1], xx_p[-1] , marker='o')
+
     ax4.legend(loc="upper right")
     ax4.grid()
     xz_p =  np.stack([0]*xy_p.shape[0],0)
@@ -148,6 +159,9 @@ def threaded_function(ekflist, prop):
     
     #print("ULTIMO P:\n",P_p_list_total[-1])
     ax5.matshow(P_p_list_total[-1])
+    ax8.matshow(x_p_list_total[-1].T)
+    for (i, j), z in np.ndenumerate(x_p_list_total[-1].T):
+        ax8.text(j, i, '{:0.1f}'.format(z), ha='center', va='center')
 
     totap = []
     for p_p in P_p_list:

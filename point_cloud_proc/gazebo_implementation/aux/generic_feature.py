@@ -33,19 +33,19 @@ class Generic_feature:
                 errorNormal = (np.abs((normal_feature[0]-normal_candidate[0]))+np.abs((normal_feature[1]-normal_candidate[1]))+np.abs((normal_feature[2]-normal_candidate[2])))
                 
                 if(errorNormal>0.3):
-                    return False, 0
+                    return False
                 else:
 
                     d = aux.distance_from_points_to_plane( compare_feat.feat.centroid, self.feat.equation)
                     #print("DISTANCIA DO PLANO PRA CENTROIDE DO OUTRO PLANO: "+str(d))
                     if np.abs(d[0]) > 0.2:
-                        return False, 0
+                        return False
                     else:
                         area1 = self.feat.width*self.feat.height
                         area2 = compare_feat.feat.width*compare_feat.feat.height
 
-                        if(area1/area2 < 0.05**2 or area1/area2 > 20**2):
-                            return False, 0
+                        if(area1/area2 < 0.05or area1/area2 > 20):
+                            return False
                         else:
                             d_maior = np.amax([self.feat.width,self.feat.height, compare_feat.feat.width,compare_feat.feat.height])
                             if(np.linalg.norm((self.feat.centroid - compare_feat.feat.centroid)) < d_maior):
@@ -67,9 +67,9 @@ class Generic_feature:
 
                                     innovation = 0
                                     print("INNOVATION:   :   ", innovation)
-                                    return True, innovation
+                                    return True
                                 else:
-                                    return True, 0
+                                    return True
             if isinstance(compare_feat.feat,Cylinder):
                 cyl = compare_feat.feat
                 pla = self.feat
@@ -89,28 +89,28 @@ class Generic_feature:
                             #print("plano tampa do cilindro")
                             self.running_geo["plane"] = self.running_geo["plane"]+1
                             self.running_geo["total"] = self.running_geo["total"]+1
-                            return True, 0
-                    return False, 0
+                            return True
+                    return False
                 else:
                     #print("Verificando distância entre plano e cilindro")
                     centroid_plane_to_cylinder_axis = aux.distance_from_points_to_axis(pla.centroid, cyl.normal, cyl.center)
                     #print(centroid_plane_to_cylinder_axis)
                     if((np.abs(centroid_plane_to_cylinder_axis[0]) > cyl.radius*1.2) ):
-                        return False, 0
+                        return False
                     else:
                         #print("Encontrou correspondencia")
                         self.running_geo["plane"] = self.running_geo["plane"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
-                        return True, 0
+                        return True
                 
 
         if isinstance(self.feat,Cylinder):
             if isinstance(compare_feat.feat,Cylinder):
                 if(np.linalg.norm(self.feat.center - compare_feat.feat.center) > 1):
-                    return False, 0
+                    return False
                 else:
                     if(self.feat.radius - compare_feat.feat.radius)>0.5:
-                        return False, 0
+                        return False
                     else:
                         #print("Encontrou correspondencia")
                         #print("Original feature: "+str(self.feat.center))
@@ -119,7 +119,7 @@ class Generic_feature:
                         #print("Candidate feature radius: "+str(compare_feat.feat.radius))
                         self.running_geo["cylinder"] = self.running_geo["cylinder"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
-                        return True, 0
+                        return True
             if isinstance(compare_feat.feat,Plane):
                 pla= compare_feat.feat
                 cyl= self.feat
@@ -142,19 +142,19 @@ class Generic_feature:
                             #print("plano tampa do cilindro")
                             self.running_geo["plane"] = self.running_geo["plane"]+1
                             self.running_geo["total"] = self.running_geo["total"]+1
-                            return True, 0
-                    return False, 0
+                            return True
+                    return False
                 else:
                     #print("Verificando distância entre plano e cilindro")
                     centroid_plane_to_cylinder_axis = aux.distance_from_points_to_axis(pla.centroid, cyl.normal, cyl.center)
                     #print(centroid_plane_to_cylinder_axis)
                     if((np.abs(centroid_plane_to_cylinder_axis[0]) > cyl.radius*1.2) ):
-                        return False, 0
+                        return False
                     else:
                         #print("Encontrou correspondencia")
                         self.running_geo["plane"] = self.running_geo["plane"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
-                        return True, 0
+                        return True
 
         if isinstance(self.feat,Cuboid):
             if isinstance(compare_feat.feat,Plane):
@@ -171,7 +171,7 @@ class Generic_feature:
                         #print("Encontrou correspondencia NO CUBOIDE")
                         self.running_geo["cuboid"] = self.running_geo["cuboid"]+1
                         self.running_geo["total"] = self.running_geo["total"]+1
-                        return True, 0
+                        return True
 
 
 

@@ -19,7 +19,7 @@ import threading #thread module imported
 import traceback
 import _thread
 
-nomepasta = "gazebo_dataset_planes"
+nomepasta = "gazebo_dataset"
 list_depth = sorted(glob.glob(nomepasta+"/*_depth.png"))
 list_rgb = sorted(glob.glob(nomepasta+"/*_rgb.png"))
 
@@ -34,13 +34,17 @@ gc = GlobalScene()
 last_angx = df['ang_x'].values[0]
 last_angy = df['ang_y'].values[0]
 last_angz = df['ang_z'].values[0]
+
+last_x = df['pos_x'].values[0]
+last_y = df['pos_y'].values[0]
+last_z = df['pos_z'].values[0]
 # odom = Odometer(nomepasta)
 
 use_gaussian_noise = False
 
 
 for a in range(nImages):
-    i = a+1+0
+    i = a+4+0
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
     # dp = cv2.imread(nomepasta+"/"+str(i)+"_depth.png",cv2.IMREAD_UNCHANGED)
@@ -48,7 +52,7 @@ for a in range(nImages):
     #depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
 
     pcd = open_pointCloud_from_rgb_and_depth(
-        color_raw, depth_raw, meters_trunc=10, showImages = False)
+        color_raw, depth_raw, meters_trunc=4, showImages = False)
 
     if use_gaussian_noise:
         pontos = np.asarray(pcd.points)
@@ -85,6 +89,12 @@ for a in range(nImages):
     c_linear = [df['c_linear_x'].values[i],
                 df['c_linear_y'].values[i], df['c_linear_z'].values[i]]
 
+
+    diff_x = df['pos_x'].values[i]-last_x
+    diff_y = df['pos_y'].values[i]-last_y
+    diff_z = df['pos_z'].values[i]-last_z
+    c_linear = [np.sqrt(diff_x**2 + diff_y**2), 0, 0]
+
     diff_angx = np.arctan2(np.sin(df['ang_x'].values[i]-last_angx), np.cos(df['ang_x'].values[i]-last_angx))
     diff_angy = np.arctan2(np.sin(df['ang_y'].values[i]-last_angy), np.cos(df['ang_y'].values[i]-last_angy))
     diff_angz = np.arctan2(np.sin(df['ang_z'].values[i]-last_angz), np.cos(df['ang_z'].values[i]-last_angz))
@@ -95,6 +105,9 @@ for a in range(nImages):
     print("----------")
     gc.add_pcd(pcd, c_linear, c_angular, t_dur, i)
 
+    last_x = df['pos_x'].values[i]
+    last_y = df['pos_y'].values[i]
+    last_z = df['pos_z'].values[i]
     last_angx = df['ang_x'].values[i]
     last_angy = df['ang_y'].values[i]
     last_angz = df['ang_z'].values[i]

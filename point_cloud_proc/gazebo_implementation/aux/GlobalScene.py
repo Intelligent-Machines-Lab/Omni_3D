@@ -33,7 +33,7 @@ class GlobalScene:
         self.fet_geo = []
 
         self.ground_normal = []
-        self.ground_equation = []
+        self.ground_equation = [0, 0, 1, -1.2]
         self.lc_atual = []
         self.propwindow = []
 
@@ -167,7 +167,6 @@ class GlobalScene:
                         [vel_angular_body.T[2]]])
 
         self.ekf.propagate(u)
-        print("zp teste:\n",np.asarray([[1], [0], [0]]))
         # if self.ekf.num_total_features['plane'] > 3:
         #     neweq = self.ekf.upload_plane(np.asarray([[1], [0], [0]]), 0)
         #     print('neweq: ', neweq)
@@ -183,8 +182,8 @@ class GlobalScene:
         # print("vel_linear_inertial: "+ str(vel_linear_inertial))
 
         # Propagação 
-        atual_loc = [self.ekf.x_p[0,0], self.ekf.x_p[1,0], 0]
-        atual_angulo = [0, 0, self.ekf.x_p[2,0]]
+        atual_loc = [self.ekf.x_m[0,0], self.ekf.x_m[1,0], 0]
+        atual_angulo = [0, 0, self.ekf.x_m[2,0]]
         #atual_loc = last_loc + vel_linear_inertial*duration
         #atual_angulo = last_angulo + vel_angular_inertial*duration
 
@@ -232,7 +231,7 @@ class GlobalScene:
             # print("\nROTAÇÃO DE PONTOS EXTREMOS: (ISSO TA CERTO DE CERTEZA)")
             # N = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
             # print("PLANO observado: ", N)
-            ls.mainPlanes[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+            ls.mainPlanes[x].move(self.ekf)
             # N = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
             # print("PLANO no frame incercial: ", N)
 
@@ -245,7 +244,7 @@ class GlobalScene:
 
 
         for x in range(len(ls.secundaryPlanes)):
-            ls.secundaryPlanes[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+            ls.secundaryPlanes[x].move(self.ekf)
             gfeature = Generic_feature(ls.secundaryPlanes[x], ground_equation=self.ground_equation)
             scene_features.append(gfeature)
 
@@ -259,7 +258,7 @@ class GlobalScene:
                 ja_existe = False
                 list_to_delete = []
                 for i_global in range(len(self.features_objects)):
-                    associou, innovation = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.ekf)
+                    associou = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.ekf)
                     if(associou):
                         ja_existe = True
                         if isinstance(scene_features[i_cena].feat,Cylinder) and isinstance(self.features_objects[i_global].feat,Plane):
@@ -292,87 +291,87 @@ class GlobalScene:
         self.fet_geo = []
         # Map cleaning and feature merge
         # Detect cuboid
-        found_cuboid = True
-        while found_cuboid:
-            list_to_delete = []
-            found_cuboid = False
-            for ob in self.features_objects:
-                if isinstance(ob.feat, Plane):
-                    altura1 = ob.feat.get_height(self.ground_normal)
-                    if altura1 > 1.5:
-                        continue
-                    if altura1 < 0.1:
-                        continue
-                    for ob2 in self.features_objects:
-                        if isinstance(ob2.feat, Plane):
-                            if (np.linalg.norm(ob2.feat.centroid - ob2.feat.centroid) > 3):
-                                continue
+        # found_cuboid = True
+        # while found_cuboid:
+        #     list_to_delete = []
+        #     found_cuboid = False
+        #     for ob in self.features_objects:
+        #         if isinstance(ob.feat, Plane):
+        #             altura1 = ob.feat.get_height(self.ground_normal)
+        #             if altura1 > 1.5:
+        #                 continue
+        #             if altura1 < 0.1:
+        #                 continue
+        #             for ob2 in self.features_objects:
+        #                 if isinstance(ob2.feat, Plane):
+        #                     if (np.linalg.norm(ob2.feat.centroid - ob2.feat.centroid) > 3):
+        #                         continue
 
-                            altura2 = ob2.feat.get_height(self.ground_normal)
-                            if altura2 > 1.5:
-                                continue
-                            # For a cuboid, height must be similar for the box's walls
-                            if(np.abs(ob2.feat.width-ob.feat.width) < 0.0001):
-                                # plane1 = plane2
-                                continue
-                            #print("Comparando alturas: ", altura1, " - ", altura2, " - diff: ",np.abs(altura1-altura2), " - Margem: ",((altura1+altura2)/2)*0.2)
+        #                     altura2 = ob2.feat.get_height(self.ground_normal)
+        #                     if altura2 > 1.5:
+        #                         continue
+        #                     # For a cuboid, height must be similar for the box's walls
+        #                     if(np.abs(ob2.feat.width-ob.feat.width) < 0.0001):
+        #                         # plane1 = plane2
+        #                         continue
+        #                     #print("Comparando alturas: ", altura1, " - ", altura2, " - diff: ",np.abs(altura1-altura2), " - Margem: ",((altura1+altura2)/2)*0.2)
 
-                            #if(np.abs(altura1-altura2)<((altura1+altura2)/2)*0.2):
-                            normal1 = np.asarray([ob.feat.equation[0],ob.feat.equation[1],ob.feat.equation[2]])
-                            normal2 = np.asarray([ob2.feat.equation[0],ob2.feat.equation[1],ob2.feat.equation[2]])
-                            perpendicularity = np.cross(normal1,normal2)
-                            # Planes are perpndiculars
-                            if(np.linalg.norm(perpendicularity) > 0.9):
-                                # Lets search for another plane with a similar normal
-                                for ob3 in self.features_objects:
-                                    if isinstance(ob3.feat, Plane):
-                                        altura3 = ob3.feat.get_height(self.ground_normal)
-                                        if altura2 > 1.5:
-                                            continue
-                                        if (np.linalg.norm(ob3.feat.centroid - ob2.feat.centroid) > 3):
-                                            continue
-                                        if (np.linalg.norm(ob3.feat.centroid - ob.feat.centroid) > 3):
-                                            continue
-                                        normal3 = np.asarray([ob3.feat.equation[0],ob3.feat.equation[1],ob3.feat.equation[2]])
-                                        if(np.linalg.norm(perpendicularity - normal3) < 0.3):
-                                            d1 = distance_from_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
-                                            d2 = distance_from_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
-                                            #print("TESTOU AQUI DENTRO - ", d1, " - ", d2)
-                                            meandim = np.mean([ob.feat.width, ob.feat.height, ob2.feat.width, ob2.feat.height, ob3.feat.width, ob3.feat.height])
-                                            if(np.linalg.norm(d1) < meandim and np.linalg.norm(d2) < meandim  ):
-                                                cub = Cuboid(ob.feat, ob2.feat, ob3.feat, self.ground_normal)
-                                                if(cub.width*cub.height*cub.depth < 1.5**3):
-                                                    ob2.feat.color = ob.feat.color
-                                                    ob3.feat.color = ob.feat.color
-                                                    #encontro = get_point_between_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
-                                                    #encontro2 = get_point_between_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
+        #                     #if(np.abs(altura1-altura2)<((altura1+altura2)/2)*0.2):
+        #                     normal1 = np.asarray([ob.feat.equation[0],ob.feat.equation[1],ob.feat.equation[2]])
+        #                     normal2 = np.asarray([ob2.feat.equation[0],ob2.feat.equation[1],ob2.feat.equation[2]])
+        #                     perpendicularity = np.cross(normal1,normal2)
+        #                     # Planes are perpndiculars
+        #                     if(np.linalg.norm(perpendicularity) > 0.9):
+        #                         # Lets search for another plane with a similar normal
+        #                         for ob3 in self.features_objects:
+        #                             if isinstance(ob3.feat, Plane):
+        #                                 altura3 = ob3.feat.get_height(self.ground_normal)
+        #                                 if altura2 > 1.5:
+        #                                     continue
+        #                                 if (np.linalg.norm(ob3.feat.centroid - ob2.feat.centroid) > 3):
+        #                                     continue
+        #                                 if (np.linalg.norm(ob3.feat.centroid - ob.feat.centroid) > 3):
+        #                                     continue
+        #                                 normal3 = np.asarray([ob3.feat.equation[0],ob3.feat.equation[1],ob3.feat.equation[2]])
+        #                                 if(np.linalg.norm(perpendicularity - normal3) < 0.3):
+        #                                     d1 = distance_from_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
+        #                                     d2 = distance_from_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
+        #                                     #print("TESTOU AQUI DENTRO - ", d1, " - ", d2)
+        #                                     meandim = np.mean([ob.feat.width, ob.feat.height, ob2.feat.width, ob2.feat.height, ob3.feat.width, ob3.feat.height])
+        #                                     if(np.linalg.norm(d1) < meandim and np.linalg.norm(d2) < meandim  ):
+        #                                         cub = Cuboid(ob.feat, ob2.feat, ob3.feat, self.ground_normal)
+        #                                         if(cub.width*cub.height*cub.depth < 1.5**3):
+        #                                             ob2.feat.color = ob.feat.color
+        #                                             ob3.feat.color = ob.feat.color
+        #                                             #encontro = get_point_between_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
+        #                                             #encontro2 = get_point_between_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
                                                     
-                                                    g = Generic_feature(cub, self.ground_equation)
-                                                    for ob_plane_clear in self.features_objects:
-                                                        if isinstance(ob_plane_clear.feat, Plane):
-                                                            associou, innovation = g.verifyCorrespondence(ob_plane_clear, self.ekf)
-                                                            if(associou):
-                                                                list_to_delete.append(ob_plane_clear)
-                                                    self.features_objects.append(g)
+        #                                             g = Generic_feature(cub, self.ground_equation)
+        #                                             for ob_plane_clear in self.features_objects:
+        #                                                 if isinstance(ob_plane_clear.feat, Plane):
+        #                                                     associou = g.verifyCorrespondence(ob_plane_clear, self.ekf)
+        #                                                     if(associou):
+        #                                                         list_to_delete.append(ob_plane_clear)
+        #                                             self.features_objects.append(g)
                                                     
-                                                    # list_to_delete.append(ob)
-                                                    # list_to_delete.append(ob2)
-                                                    # list_to_delete.append(ob3)
-                                                    # TODO: Fazer correspondência entre plano e cubo
-                                                    # TODO: Verificar correspondência de todas as features planares 
-                                                    break
-                                                else:
-                                                    continue
-                        if list_to_delete:
-                            break
-                if list_to_delete:
-                    break
+        #                                             # list_to_delete.append(ob)
+        #                                             # list_to_delete.append(ob2)
+        #                                             # list_to_delete.append(ob3)
+        #                                             # TODO: Fazer correspondência entre plano e cubo
+        #                                             # TODO: Verificar correspondência de todas as features planares 
+        #                                             break
+        #                                         else:
+        #                                             continue
+        #                 if list_to_delete:
+        #                     break
+        #         if list_to_delete:
+        #             break
 
-            # Delete merged objects
-            self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
-            if list_to_delete:
+        #     # Delete merged objects
+        #     self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
+        #     if list_to_delete:
 
-                found_cuboid = True
+        #         found_cuboid = True
 
         # Map cleaning
         if(i % 1 == 0):
@@ -386,7 +385,7 @@ class GlobalScene:
                     #if(self.features_objects[i_global1].self.running_geo[""])
                     for i_global2 in range(len(self.features_objects)):
                         if(not (i_global1 == i_global2)):
-                            associou, innovation = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.ekf)
+                            associou = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.ekf)
                             if(associou):
                                 list_to_delete.append(self.features_objects[i_global2])
                                 break
@@ -400,6 +399,9 @@ class GlobalScene:
 
 
 
+        # pcd_moved = copy.deepcopy(pcd).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc)
+        # self.pcd_total.append(pcd_moved)
+        # o3d.visualization.draw_geometries(self.pcd_total)
 
         self.scenes_rotation.append(atual_angulo)
         self.scenes_translation.append(atual_loc)
@@ -420,6 +422,7 @@ class GlobalScene:
             #ax.plot3D(posi[:, 0], posi[:, 1], posi[:, 2], 'gray')
             #plt.show()
             #ax.plot(atual_loc[:, 0],atual_loc[:, 1],atual_loc[:, 2])
+
 
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)

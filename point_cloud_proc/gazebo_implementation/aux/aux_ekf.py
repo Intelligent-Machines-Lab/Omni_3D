@@ -1,4 +1,5 @@
 import numpy as np
+from aux.aux import *
 import pickle
 
 class ekf:
@@ -27,9 +28,9 @@ class ekf:
         Fv = get_Fv(x_m_last, u)
         V  = get_V()
 
-        print("antes: \n", x_m_last)
+
         new_x_p = apply_f(x_m_last, u) # Propagation
-        print("depois: \n", new_x_p)
+
         #print("x_p: \n",x_p)
         new_P_p = Fx @ P_m_last @ Fx.T +  Fv @ V @ Fv.T
         #print("new_P_p: ", new_P_p)
@@ -37,7 +38,7 @@ class ekf:
 
 
         self.x_p[:3,:] = new_x_p
-        print("depois2: \n", self.x_p[:3,:])
+
         self.P_p[:3,:3] = new_P_p
         #print("self.P_p: ", self.P_p)
 
@@ -45,7 +46,7 @@ class ekf:
         self.x_m = self.x_p
 
         self.x_p_list.append(self.x_p.copy())
-        print("gravandoisso: \n", self.x_p_list)
+
         self.P_p_list.append(self.P_p.copy())
 
         # print("f: ",self.x_p)
@@ -84,7 +85,9 @@ class ekf:
 
     def upload_plane(self, Z, id):
         Hxv = get_Hxv_plane(self.x_m, Z)
+        print("Hxv: \n", Hxv)
         Hxp = get_Hxp_plane(self.x_m, Z)
+        print("Hxp: \n", Hxp)
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_plane()
         W = get_W()
@@ -93,20 +96,24 @@ class ekf:
         K = self.P_m @ Hx.T @ np.linalg.inv(S)
 
         v = Z - apply_h(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)])
+        
+        # print("Pos antes: \n", self.x_p[:3,:])
 
         self.x_m = self.x_m + K @ v
+        # print("Pos depois: \n", self.x_m[:3,:])
         self.P_m = self.P_m - K @ Hx @ self.P_m
-
         return self.x_m[(3+id*3):(3+(id+1)*3)]
+
+        #return self.x_m[(3+id*3):(3+(id+1)*3)]
 
 
 def get_Hx(Hxv, Hxp, id, P_m):
-    print('Hxv:\n',Hxv)
-    print('Hxp:\n',Hxp)
+    # print('Hxv:\n',Hxv)
+    # print('Hxp:\n',Hxp)
     antes_p = np.zeros((Hxv.shape[0],id*3))
     depois_p = np.zeros((Hxv.shape[0],(P_m.shape[1]-(Hxv.shape[1]+id*Hxp.shape[1]+Hxp.shape[1]))))
-    print('antes_p:\n',antes_p)
-    print('depois_p:\n',depois_p)
+    # print('antes_p:\n',antes_p)
+    # print('depois_p:\n',depois_p)
     Hx = np.hstack((Hxv,antes_p,Hxp,depois_p))
     return Hx
 
@@ -145,7 +152,7 @@ def init_x_P():
     return x, P
 
 def get_V():
-    sigma_x = 0.01/3
+    sigma_x = 0.1/3
     sigma_psi = (1.5*np.pi/180)/3
 
     V = np.asarray([[sigma_x**2, 0],
@@ -155,7 +162,7 @@ def get_V():
 def apply_f(x, u):
     f11 = x[0,0] + np.cos(x[2,0])*u[0,0]
     f21 = x[1, 0] + np.sin(x[2,0])*u[0,0]
-    f31 = x[2, 0] + u[1,0]
+    f31 = get_sum_angles(x[2, 0], u[1,0])
 
     new_x = np.asarray([[f11],[f21],[f31]])
     return new_x
@@ -168,7 +175,7 @@ def get_Fx(x, u):
 
 def get_Fv(x, u):
     Fv = np.asarray([[np.cos(x[2,0]), 0],
-                     [np.cos(x[2,0]), 0],
+                     [np.sin(x[2,0]), 0],
                      [0, 1]])
     return Fv
 
@@ -244,19 +251,29 @@ def get_Hxp_plane(x, N):
 
 
 def apply_g(x, Zp):
-    d = np.linalg.norm(Zp)
-    a = Zp[0,0]/d
-    b = Zp[1,0]/d
-    c = Zp[2,0]/d
+    # d = np.linalg.norm(Zp)
+    # a = Zp[0,0]/d
+    # b = Zp[1,0]/d
+    # c = Zp[2,0]/d
 
-    ux = a*(d - a*x[0,0] - b*x[1,0])
-    uy = b*(d - a*x[0,0] - b*x[1,0])
-    uz = c*(d - a*x[0,0] - b*x[1,0])
+    # ux = a*(d - a*x[0,0] - b*x[1,0])
+    # uy = b*(d - a*x[0,0] - b*x[1,0])
+    # uz = c*(d - a*x[0,0] - b*x[1,0])
 
-    N = np.asarray( [[np.cos(x[2,0])*ux - np.sin(x[2,0])*uy],
-                     [np.sin(x[2,0])*ux + np.cos(x[2,0])*uy],
-                     [uz]])
-    return N
+    Zp = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]), Zp)
+
+    eta = np.asarray([[x[0,0]], [x[1,0]], [0]])
+    # print('eta: ', eta)
+    # eta = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]), eta)
+    # print('eta2: ', eta)
+
+    corre = (np.dot(eta.T, Zp)/(np.linalg.norm(Zp)**2))
+    u = Zp - corre*Zp
+
+    # N = np.asarray( [[np.cos(x[2,0])*u[0,0] - np.sin(x[2,0])*u[1,0]],
+    #                  [np.sin(x[2,0])*u[0,0] + np.cos(x[2,0])*u[1,0]],
+    #                  [u[2,0]]])
+    return u
 
 def get_Gx_plane(x, Zp):
     d = np.linalg.norm(Zp)
@@ -305,9 +322,9 @@ def get_Gz_plane(x, Zp):
     return Gz
 
 def get_W():
-    sigma_x = 0*0.01/3
-    sigma_y = 0*0.01/3
-    sigma_z = 0*0.01/3
+    sigma_x = 0.1/3
+    sigma_y = 0.1/3
+    sigma_z =0.1/3
 
     W = np.asarray([[sigma_x**2, 0, 0],
                     [0, sigma_y**2, 0],

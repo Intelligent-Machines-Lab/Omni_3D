@@ -167,6 +167,9 @@ def get_xyz_yawpitchroll_from_transf_matrix(transf_matrix):
 def get_diff_angles(ang1, ang2):
     return np.arctan2(np.sin(ang1-ang2), np.cos(ang1-ang2))
 
+def get_sum_angles(ang1, ang2):
+    return np.arctan2(np.sin(ang1+ang2), np.cos(ang1+ang2))
+
 
 
 def display_inlier_outlier(cloud, ind):

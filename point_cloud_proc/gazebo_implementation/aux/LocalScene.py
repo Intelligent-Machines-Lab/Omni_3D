@@ -122,10 +122,12 @@ class LocalScene:
 
 
 
-    def defineGroundNormal(self, ground_eq_reserva = [0, 0, 0, 0]):
+    def defineGroundNormal(self, ground_eq_reserva = [0, 0, 1, -1.2]):
         normalCandidatesY = []
         for i in range(len(self.mainPlanes)):
             normalCandidatesY.append(abs(self.mainPlanes[i].equation[2]))
+        # for i in range(len(self.mainPlanes)):
+        #     normalCandidatesY.append(abs(self.secundaryPlanes[i].equation[2]))
             #print("Equacaodoplano ",self.mainPlanes[i].equation)
         if normalCandidatesY:
             valMax = max(normalCandidatesY)
@@ -143,7 +145,7 @@ class LocalScene:
                 self.groundNormal = np.asarray([self.groundEquation[0], self.groundEquation[1], self.groundEquation[2]])
                 self.groundID = -1
         else:
-            #print("Tendo que usar equação reserva do chão: ", self.groundEquation)
+            print("Tendo que usar equação reserva do chão: ", ground_eq_reserva)
             self.groundEquation = np.asarray(ground_eq_reserva)
             self.groundNormal = np.asarray([self.groundEquation[0], self.groundEquation[1], self.groundEquation[2]])
             self.groundID = -1
