@@ -53,12 +53,12 @@ class Plane:
             vecC = vecC / np.linalg.norm(vecC)
             k = -np.sum(np.multiply(vecC, pt_samples[1,:]))
             plane_eq = [vecC[0], vecC[1], vecC[2], k]
-            N = k*vecC
-            da = np.linalg.norm(N)
-            aa = N[0]/da
-            ba = N[1]/da
-            ca = N[2]/da
-            plane_eq = [aa, ba, ca, da]
+            # N = k*vecC
+            # da = np.linalg.norm(N)
+            # aa = N[0]/da
+            # ba = N[1]/da
+            # ca = N[2]/da
+            # plane_eq = [aa, ba, ca, da]
             
             #print(plane_eq)
 

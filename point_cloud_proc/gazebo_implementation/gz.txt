@@ -1,133 +1,156 @@
-dh1dnx =
  
-sin(psi)*((Ny*x)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2) - cos(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Nx*x)/(Nx^2 + Ny^2 + Nz^2) - 1)
+num =
  
- 
-dh1dnx =
- 
-(cos(psi)*(2*x*a^3 + 2*b*y*a^2 - 2*x*a + d - b*y))/d - (b*sin(psi)*(2*x*a^2 + 2*b*y*a - x))/d
- 
-
-l =
-
-    '\frac{\cos\left(\mathrm{psi}\right)\,\left(2\,x\,a^3+2\,b\,y\,a^2-2\,x\,a+d-b\,y\right)}{d}-\frac{b\,\sin\left(\mathrm{psi}\right)\,\left(2\,x\,a^2+2\,b\,y\,a-x\right)}{d}'
-
- 
-dh1dny =
- 
-sin(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Ny^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Ny*y)/(Nx^2 + Ny^2 + Nz^2) - 1) - cos(psi)*((Nx*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2)
+(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2)
  
  
-dh1dny =
+h1 =
  
-(a*cos(psi)*(2*y*b^2 + 2*a*x*b - y))/d - (sin(psi)*(2*y*b^3 + 2*a*x*b^2 - 2*y*b + d - a*x))/d
- 
-
-l =
-
-    '\frac{a\,\cos\left(\mathrm{psi}\right)\,\left(2\,y\,b^2+2\,a\,x\,b-y\right)}{d}-\frac{\sin\left(\mathrm{psi}\right)\,\left(2\,y\,b^3+2\,a\,x\,b^2-2\,y\,b+d-a\,x\right)}{d}'
-
- 
-dh1dnz =
- 
-(2*Nx*Nz*cos(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (2*Ny*Nz*sin(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2
+Nx*cos(psi) - Ny*sin(psi) + ((Nx*cos(psi) - Ny*sin(psi))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2)
  
  
-dh1dnz =
+h2 =
  
-(2*c*(a*cos(psi) - b*sin(psi))*(a*x + b*y))/d
+Ny*cos(psi) + Nx*sin(psi) + ((Ny*cos(psi) + Nx*sin(psi))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2)
+ 
+ 
+h3 =
+ 
+Nz + (Nz*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2)
+ 
+ 
+dh1dNx =
+ 
+cos(psi) + (cos(psi)*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) + ((Nx*cos(psi) - Ny*sin(psi))*(x*cos(psi) + y*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - ((Nx*cos(psi) - Ny*sin(psi))*(2*cos(psi)*(Nx*cos(psi) - Ny*sin(psi)) + 2*sin(psi)*(Ny*cos(psi) + Nx*sin(psi)))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(2*(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2))
+ 
+ 
+dh1dNx =
+ 
+cos(psi) + (d*(a*cos(psi) - b*sin(psi))*(x*cos(psi) + y*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) + (d*cos(psi)*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) - (a*d^3*(a*cos(psi) - b*sin(psi))*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
  
 
 l =
 
-    '\frac{2\,c\,\left(a\,\cos\left(\mathrm{psi}\right)-b\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x+b\,y\right)}{d}'
+    '\cos\left(\mathrm{psi}\right)+\frac{d\,\left(a\,\cos\left(\mathrm{psi}\right)-b\,\sin\left(\mathrm{psi}\right)\right)\,\left(x\,\cos\left(\mathrm{psi}\right)+y\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}+\frac{d\,\cos\left(\mathrm{psi}\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}-\frac{a\,d^3\,\left(a\,\cos\left(\mathrm{psi}\right)-b\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
 
  
-dh2dnx =
+dh1dNy =
  
-- sin(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Nx*x)/(Nx^2 + Ny^2 + Nz^2) - 1) - cos(psi)*((Ny*x)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2)
- 
- 
-dh2dnx =
- 
-(sin(psi)*(2*x*a^3 + 2*b*y*a^2 - 2*x*a + d - b*y))/d + (b*cos(psi)*(2*x*a^2 + 2*b*y*a - x))/d
- 
-
-l =
-
-    '\frac{\sin\left(\mathrm{psi}\right)\,\left(2\,x\,a^3+2\,b\,y\,a^2-2\,x\,a+d-b\,y\right)}{d}+\frac{b\,\cos\left(\mathrm{psi}\right)\,\left(2\,x\,a^2+2\,b\,y\,a-x\right)}{d}'
-
- 
-dh2dny =
- 
-- sin(psi)*((Nx*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Nx*Ny*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2) - cos(psi)*((Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) - (2*Ny^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (Ny*y)/(Nx^2 + Ny^2 + Nz^2) - 1)
+((Nx*cos(psi) - Ny*sin(psi))*(y*cos(psi) - x*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - (sin(psi)*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - sin(psi) - ((Nx*cos(psi) - Ny*sin(psi))*(2*cos(psi)*(Ny*cos(psi) + Nx*sin(psi)) - 2*sin(psi)*(Nx*cos(psi) - Ny*sin(psi)))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(2*(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2))
  
  
-dh2dny =
+dh1dNy =
  
-(cos(psi)*(2*y*b^3 + 2*a*x*b^2 - 2*y*b + d - a*x))/d + (a*sin(psi)*(2*y*b^2 + 2*a*x*b - y))/d
+(d*(a*cos(psi) - b*sin(psi))*(y*cos(psi) - x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) - sin(psi) - (d*sin(psi)*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) - (b*d^3*(a*cos(psi) - b*sin(psi))*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
  
 
 l =
 
-    '\frac{\cos\left(\mathrm{psi}\right)\,\left(2\,y\,b^3+2\,a\,x\,b^2-2\,y\,b+d-a\,x\right)}{d}+\frac{a\,\sin\left(\mathrm{psi}\right)\,\left(2\,y\,b^2+2\,a\,x\,b-y\right)}{d}'
+    '\frac{d\,\left(a\,\cos\left(\mathrm{psi}\right)-b\,\sin\left(\mathrm{psi}\right)\right)\,\left(y\,\cos\left(\mathrm{psi}\right)-x\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}-\sin\left(\mathrm{psi}\right)-\frac{d\,\sin\left(\mathrm{psi}\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}-\frac{b\,d^3\,\left(a\,\cos\left(\mathrm{psi}\right)-b\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
 
  
-dh2dnz =
+dh1dNz =
  
-(2*Ny*Nz*cos(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 + (2*Nx*Nz*sin(psi)*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2
- 
- 
-dh2dnz =
- 
-(2*c*(b*cos(psi) + a*sin(psi))*(a*x + b*y))/d
- 
-
-l =
-
-    '\frac{2\,c\,\left(b\,\cos\left(\mathrm{psi}\right)+a\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x+b\,y\right)}{d}'
-
- 
-dh3dnx =
- 
-(2*Nx*Nz*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (Nz*x)/(Nx^2 + Ny^2 + Nz^2)
+-(Nz*(Nx*cos(psi) - Ny*sin(psi))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2)
  
  
-dh3dnx =
+dh1dNz =
  
-(c*(2*x*a^2 + 2*b*y*a - x))/d
+-(c*d^3*(a*cos(psi) - b*sin(psi))*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
  
 
 l =
 
-    '\frac{c\,\left(2\,x\,a^2+2\,b\,y\,a-x\right)}{d}'
+    '-\frac{c\,d^3\,\left(a\,\cos\left(\mathrm{psi}\right)-b\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
 
  
-dh3dny =
+dh2dNx =
  
-(2*Ny*Nz*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (Nz*y)/(Nx^2 + Ny^2 + Nz^2)
- 
- 
-dh3dny =
- 
-(c*(2*y*b^2 + 2*a*x*b - y))/d
- 
-
-l =
-
-    '\frac{c\,\left(2\,y\,b^2+2\,a\,x\,b-y\right)}{d}'
-
- 
-dh3dnz =
- 
-(2*Nz^2*(Nx*x + Ny*y))/(Nx^2 + Ny^2 + Nz^2)^2 - (Nx*x + Ny*y)/(Nx^2 + Ny^2 + Nz^2) + 1
+sin(psi) + (sin(psi)*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) + ((Ny*cos(psi) + Nx*sin(psi))*(x*cos(psi) + y*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - ((Ny*cos(psi) + Nx*sin(psi))*(2*cos(psi)*(Nx*cos(psi) - Ny*sin(psi)) + 2*sin(psi)*(Ny*cos(psi) + Nx*sin(psi)))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(2*(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2))
  
  
-dh3dnz =
+dh2dNx =
  
-(d - a*x - b*y + 2*a*c^2*x + 2*b*c^2*y)/d
+sin(psi) + (d*(b*cos(psi) + a*sin(psi))*(x*cos(psi) + y*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) + (d*sin(psi)*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) - (a*d^3*(b*cos(psi) + a*sin(psi))*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
  
 
 l =
 
-    '\frac{d-a\,x-b\,y+2\,a\,c^2\,x+2\,b\,c^2\,y}{d}'
+    '\sin\left(\mathrm{psi}\right)+\frac{d\,\left(b\,\cos\left(\mathrm{psi}\right)+a\,\sin\left(\mathrm{psi}\right)\right)\,\left(x\,\cos\left(\mathrm{psi}\right)+y\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}+\frac{d\,\sin\left(\mathrm{psi}\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}-\frac{a\,d^3\,\left(b\,\cos\left(\mathrm{psi}\right)+a\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
+
+ 
+dh2dNy =
+ 
+cos(psi) + (cos(psi)*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) + ((Ny*cos(psi) + Nx*sin(psi))*(y*cos(psi) - x*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - ((Ny*cos(psi) + Nx*sin(psi))*(2*cos(psi)*(Ny*cos(psi) + Nx*sin(psi)) - 2*sin(psi)*(Nx*cos(psi) - Ny*sin(psi)))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(2*(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2))
+ 
+ 
+dh2dNy =
+ 
+cos(psi) + (d*(b*cos(psi) + a*sin(psi))*(y*cos(psi) - x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) + (d*cos(psi)*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) - (b*d^3*(b*cos(psi) + a*sin(psi))*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
+ 
+
+l =
+
+    '\cos\left(\mathrm{psi}\right)+\frac{d\,\left(b\,\cos\left(\mathrm{psi}\right)+a\,\sin\left(\mathrm{psi}\right)\right)\,\left(y\,\cos\left(\mathrm{psi}\right)-x\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}+\frac{d\,\cos\left(\mathrm{psi}\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}-\frac{b\,d^3\,\left(b\,\cos\left(\mathrm{psi}\right)+a\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
+
+ 
+dh2dNz =
+ 
+-(Nz*(Ny*cos(psi) + Nx*sin(psi))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2)
+ 
+ 
+dh2dNz =
+ 
+-(c*d^3*(b*cos(psi) + a*sin(psi))*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
+ 
+
+l =
+
+    '-\frac{c\,d^3\,\left(b\,\cos\left(\mathrm{psi}\right)+a\,\sin\left(\mathrm{psi}\right)\right)\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
+
+ 
+dh3dNx =
+ 
+(Nz*(x*cos(psi) + y*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - (Nz*(2*cos(psi)*(Nx*cos(psi) - Ny*sin(psi)) + 2*sin(psi)*(Ny*cos(psi) + Nx*sin(psi)))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(2*(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2))
+ 
+ 
+dh3dNx =
+ 
+(c*d^3*(b^2*x*cos(psi) + c^2*x*cos(psi) + b^2*y*sin(psi) + c^2*y*sin(psi) - a*b*y*cos(psi) + a*b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
+ 
+
+l =
+
+    '\frac{c\,d^3\,\left(b^2\,x\,\cos\left(\mathrm{psi}\right)+c^2\,x\,\cos\left(\mathrm{psi}\right)+b^2\,y\,\sin\left(\mathrm{psi}\right)+c^2\,y\,\sin\left(\mathrm{psi}\right)-a\,b\,y\,\cos\left(\mathrm{psi}\right)+a\,b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
+
+ 
+dh3dNy =
+ 
+(Nz*(y*cos(psi) - x*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - (Nz*(2*cos(psi)*(Ny*cos(psi) + Nx*sin(psi)) - 2*sin(psi)*(Nx*cos(psi) - Ny*sin(psi)))*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(2*(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2))
+ 
+ 
+dh3dNy =
+ 
+-(c*d^3*(a^2*x*sin(psi) - c^2*y*cos(psi) - a^2*y*cos(psi) + c^2*x*sin(psi) + a*b*x*cos(psi) + a*b*y*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2)
+ 
+
+l =
+
+    '-\frac{c\,d^3\,\left(a^2\,x\,\sin\left(\mathrm{psi}\right)-c^2\,y\,\cos\left(\mathrm{psi}\right)-a^2\,y\,\cos\left(\mathrm{psi}\right)+c^2\,x\,\sin\left(\mathrm{psi}\right)+a\,b\,x\,\cos\left(\mathrm{psi}\right)+a\,b\,y\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}'
+
+ 
+dh3dNz =
+ 
+(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi)))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(1/2) - (Nz^2*(x*(Nx*cos(psi) - Ny*sin(psi)) + y*(Ny*cos(psi) + Nx*sin(psi))))/(Nz^2 + (Ny*cos(psi) + Nx*sin(psi))^2 + (Nx*cos(psi) - Ny*sin(psi))^2)^(3/2) + 1
+ 
+ 
+dh3dNz =
+ 
+(d*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(1/2) - (c^2*d^3*(a*x*cos(psi) + b*y*cos(psi) + a*y*sin(psi) - b*x*sin(psi)))/(d^2*(a^2 + b^2 + c^2))^(3/2) + 1
+ 
+
+l =
+
+    '\frac{d\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{\sqrt{d^2\,\left(a^2+b^2+c^2\right)}}-\frac{c^2\,d^3\,\left(a\,x\,\cos\left(\mathrm{psi}\right)+b\,y\,\cos\left(\mathrm{psi}\right)+a\,y\,\sin\left(\mathrm{psi}\right)-b\,x\,\sin\left(\mathrm{psi}\right)\right)}{{\left(d^2\,\left(a^2+b^2+c^2\right)\right)}^{3/2}}+1'
+
+>> 

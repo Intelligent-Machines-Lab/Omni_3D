@@ -1,6 +1,7 @@
 import numpy as np
 from aux.aux import *
 import pickle
+from operator import itemgetter
 
 class ekf:
 
@@ -85,9 +86,7 @@ class ekf:
 
     def upload_plane(self, Z, id):
         Hxv = get_Hxv_plane(self.x_m, Z)
-        print("Hxv: \n", Hxv)
         Hxp = get_Hxp_plane(self.x_m, Z)
-        print("Hxp: \n", Hxp)
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_plane()
         W = get_W()
@@ -96,15 +95,58 @@ class ekf:
         K = self.P_m @ Hx.T @ np.linalg.inv(S)
 
         v = Z - apply_h(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)])
-        
-        # print("Pos antes: \n", self.x_p[:3,:])
 
         self.x_m = self.x_m + K @ v
-        # print("Pos depois: \n", self.x_m[:3,:])
         self.P_m = self.P_m - K @ Hx @ self.P_m
+
         return self.x_m[(3+id*3):(3+(id+1)*3)]
 
-        #return self.x_m[(3+id*3):(3+(id+1)*3)]
+    def calculate_mahalanobis(self, feature):
+        eq = feature.equation
+        N = eq[3]*np.asarray([[eq[0]],[eq[1]],[eq[2]]])
+        distances = []
+        for id in range(self.num_total_features['plane']):
+            Zp = apply_h(self.x_m, self.get_feature_from_id(id))
+            Hxv = get_Hxv_plane(self.x_m, Zp)
+            Hxp = get_Hxp_plane(self.x_m, Zp)
+            Hx = get_Hx(Hxv, Hxp, id, self.P_m)
+            Hw = get_Hw_plane()
+            W = get_W()
+
+            S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
+            y = N - Zp
+            d = y.T @ np.linalg.inv(S) @ y
+            print("Zp: ",Zp.T, " N: ",N.T, " d: ", d)
+            distances.append(d[0][0])
+        if distances:
+            idmin = min(enumerate(distances), key=itemgetter(1))[0] 
+            if(distances[idmin] > 50):
+                idmin = -1
+        else:
+            idmin = -1
+
+
+        print("Associação: ",distances, " id menor: ",idmin)
+        
+        return idmin
+
+
+    def get_feature_from_id(self, id):
+        return self.x_m[(3+id*3):(3+(id+1)*3)]
+
+    def delete_feature(self, id):
+        # deleta linhas da matriz de estados
+        self.x_m = np.delete(self.x_m,(np.s_[(3+id*3):(3+(id+1)*3)]), axis=0)
+
+        # deleta linhas da matriz de covariância
+        self.P_m = np.delete(self.P_m,(np.s_[(3+id*3):(3+(id+1)*3)]), axis=0)
+
+        # deleta colunas da matriz de covariância
+        self.P_m = np.delete(self.P_m,(np.s_[(3+id*3):(3+(id+1)*3)]), axis=1)
+
+        self.num_total_features['plane'] = self.num_total_features['plane']-1
+
+
 
 
 def get_Hx(Hxv, Hxp, id, P_m):
@@ -140,15 +182,13 @@ def get_Yz(Gx, Gz, P_m):
     return Yz
 
 def init_x_P():
-    # 7 paredes = 21 parãmetros
-    dim = 3
 
-    P = np.eye(dim, dtype=int)
+    P = np.eye(3, dtype=int)
     P[0, 0] = 0
     P[1, 1] = 0
     P[2, 2] = 0
 
-    x = np.zeros((dim, 1))
+    x = np.zeros((3, 1))
     return x, P
 
 def get_V():
@@ -281,17 +321,17 @@ def get_Gx_plane(x, Zp):
     b = Zp[1,0]/d
     c = Zp[2,0]/d
 
-    dg1dx = - np.cos(x[2,0])*a**2 + b*np.sin(x[2,0])*a
-    dg1dy = np.sin(x[2,0])*b**2 - a*np.cos(x[2,0])*b
-    dg1dpsi = (b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0] - d + b*x[1,0])
+    dg1dx = (d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))**2)/(d**2*(a**2 + b**2 + c**2))**(1/2)
+    dg1dy = (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*np.cos(x[2,0]) - b*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
+    dg1dpsi = - a*d*np.sin(x[2,0]) - b*d*np.cos(x[2,0]) - (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(b*x[0,0]*np.cos(x[2,0]) - a*x[1,0]*np.cos(x[2,0]) + a*x[0,0]*np.sin(x[2,0]) + b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
 
-    dg2dx = - np.sin(x[2,0])*a**2 - b*np.cos(x[2,0])*a
-    dg2dy = - np.cos(x[2,0])*b**2 - a*np.sin(x[2,0])*b
-    dg2dpsi = -(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0] - d + b*x[1,0])
+    dg2dx = (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*np.cos(x[2,0]) - b*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
+    dg2dy = (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))**2)/(d**2*(a**2 + b**2 + c**2))**(1/2)
+    dg2dpsi = a*d*np.cos(x[2,0]) - b*d*np.sin(x[2,0]) - (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(b*x[0,0]*np.cos(x[2,0]) - a*x[1,0]*np.cos(x[2,0]) + a*x[0,0]*np.sin(x[2,0]) + b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
 
-    dg3dx = -a*c
-    dg3dy = -b*c
-    dh3dpsi = 0
+    dg3dx = (c*d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
+    dg3dy = (c*d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
+    dh3dpsi = -(c*d**2*(b*x[0,0]*np.cos(x[2,0]) - a*x[1,0]*np.cos(x[2,0]) + a*x[0,0]*np.sin(x[2,0]) + b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
 
     Gxp = np.asarray([[dg1dx, dg1dy, dg1dpsi],
                      [dg2dx, dg2dy, dg2dpsi],
@@ -304,17 +344,17 @@ def get_Gz_plane(x, Zp):
     b = Zp[1,0]/d
     c = Zp[2,0]/d
 
-    dg1dnx = (np.cos(x[2,0])*(2*x[0,0]*a**3 + 2*b*x[1,0]*a**2 - 2*x[0,0]*a + d - b*x[1,0]))/d - (b*np.sin(x[2,0])*(2*x[0,0]*a**2 + 2*b*x[1,0]*a - x[0,0]))/d
-    dg1dny = (a*np.cos(x[2,0])*(2*x[1,0]*b**2 + 2*a*x[0,0]*b - x[1,0]))/d - (np.sin(x[2,0])*(2*x[1,0]*b**3 + 2*a*x[0,0]*b**2 - 2*x[1,0]*b + d - a*x[0,0]))/d
-    dg1dnz = (2*c*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0] + b*x[1,0]))/d
+    dg1dnx = np.cos(x[2,0]) + (d*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(x[0,0]*np.cos(x[2,0]) + x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d*np.cos(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (a*d**3*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
+    dg1dny = (d*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(x[1,0]*np.cos(x[2,0]) - x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - np.sin(x[2,0]) - (d*np.sin(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (b*d**3*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
+    dg1dnz = -(c*d**3*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
     
-    dg2dnx = (np.sin(x[2,0])*(2*x[0,0]*a**3 + 2*b*x[1,0]*a**2 - 2*x[0,0]*a + d - b*x[1,0]))/d + (b*np.cos(x[2,0])*(2*x[0,0]*a**2 + 2*b*x[1,0]*a - x[0,0]))/d
-    dg2dny = (np.cos(x[2,0])*(2*x[1,0]*b**3 + 2*a*x[0,0]*b**2 - 2*x[1,0]*b + d - a*x[0,0]))/d + (a*np.sin(x[2,0])*(2*x[1,0]*b**2 + 2*a*x[0,0]*b - x[1,0]))/d
-    dg2dnz = (2*c*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0] + b*x[1,0]))/d
+    dg2dnx = np.sin(x[2,0]) + (d*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(x[0,0]*np.cos(x[2,0]) + x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d*np.sin(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (a*d**3*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
+    dg2dny = np.cos(x[2,0]) + (d*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(x[1,0]*np.cos(x[2,0]) - x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d*np.cos(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (b*d**3*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
+    dg2dnz = -(c*d**3*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
 
-    dg3dnx = (c*(2*x[0,0]*a**2 + 2*b*x[1,0]*a - x[0,0]))/d
-    dg3dny = (c*(2*x[1,0]*b**2 + 2*a*x[0,0]*b - x[1,0]))/d
-    dg3dnz = (d - a*x[0,0] - b*x[1,0] + 2*a*c**2*x[0,0] + 2*b*c**2*x[1,0])/d
+    dg3dnx = (c*d**3*(b**2*x[0,0]*np.cos(x[2,0]) + c**2*x[0,0]*np.cos(x[2,0]) + b**2*x[1,0]*np.sin(x[2,0]) + c**2*x[1,0]*np.sin(x[2,0]) - a*b*x[1,0]*np.cos(x[2,0]) + a*b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
+    dg3dny = -(c*d**3*(a**2*x[0,0]*np.sin(x[2,0]) - c**2*x[1,0]*np.cos(x[2,0]) - a**2*x[1,0]*np.cos(x[2,0]) + c**2*x[0,0]*np.sin(x[2,0]) + a*b*x[0,0]*np.cos(x[2,0]) + a*b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
+    dg3dnz = (d*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (c**2*d**3*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2) + 1
 
     Gz = np.asarray([[dg1dnx, dg1dny, dg1dnz],
                      [dg2dnx, dg2dny, dg2dnz],

@@ -174,7 +174,20 @@ class Generic_feature:
                         return True
 
 
-
+    def correspond(self, compare_feat, ekf = ekf):
+        if isinstance(self.feat,Plane):
+            if isinstance(compare_feat.feat,Plane):
+                Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
+                Z = apply_h(ekf.x_m, Z)
+                N = ekf.upload_plane(Z, self.id)
+                d = np.linalg.norm(N)
+                a = N[0,0]/d
+                b = N[1,0]/d
+                c = N[2,0]/d
+                neweq = [a, b, c, d]
+                if(self.feat.append_plane(compare_feat, neweq)):
+                    self.running_geo["plane"] = self.running_geo["plane"]+1
+                    self.running_geo["total"] = self.running_geo["total"]+1
 
     def getProprieties(self):
         prop = self.feat.getProrieties()

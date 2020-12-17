@@ -19,7 +19,7 @@ import threading #thread module imported
 import traceback
 import _thread
 
-nomepasta = "gazebo_dataset"
+nomepasta = "gazebo_dataset2"
 list_depth = sorted(glob.glob(nomepasta+"/*_depth.png"))
 list_rgb = sorted(glob.glob(nomepasta+"/*_rgb.png"))
 
@@ -44,7 +44,7 @@ use_gaussian_noise = False
 
 
 for a in range(nImages):
-    i = a+4+0
+    i = a+0+9
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
     # dp = cv2.imread(nomepasta+"/"+str(i)+"_depth.png",cv2.IMREAD_UNCHANGED)
@@ -52,7 +52,7 @@ for a in range(nImages):
     #depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
 
     pcd = open_pointCloud_from_rgb_and_depth(
-        color_raw, depth_raw, meters_trunc=4, showImages = False)
+        color_raw, depth_raw, meters_trunc=50, showImages = False)
 
     if use_gaussian_noise:
         pontos = np.asarray(pcd.points)

@@ -44,6 +44,10 @@ class GlobalScene:
         self.ekf = ekf()
 
 
+    def get_feature_from_id(self, id):
+        for i_global in self.features_objects:
+            if id == i_global.id:
+                return i_global
 
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
@@ -218,77 +222,77 @@ class GlobalScene:
 
 
         scene_features=[]
+
+        planes_list = []
+        planes_list.extend(ls.mainPlanes.copy())
+        planes_list.extend(ls.secundaryPlanes.copy())
         
-        for x in range(len(ls.mainPlanes)):
-
-            # print("\nUSANDO g")
-            # zp = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
-            # print("PLANO observado: ", zp)
-            # N2 = apply_g(self.ekf.x_m, zp)
-            # print("PLANO no frame incercial: ", N2)
-
-
-            # print("\nROTAÇÃO DE PONTOS EXTREMOS: (ISSO TA CERTO DE CERTEZA)")
-            # N = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
-            # print("PLANO observado: ", N)
-            ls.mainPlanes[x].move(self.ekf)
-            # N = ls.mainPlanes[x].equation[3]*np.asarray([[ls.mainPlanes[x].equation[0]], [ls.mainPlanes[x].equation[1]], [ls.mainPlanes[x].equation[2]]])
-            # print("PLANO no frame incercial: ", N)
-
-            # print("\nUSANDO h")
-            # zp = apply_h(self.ekf.x_m, N2)
-            # print("PLANO no frame incercial: ", N2)
-            # print("PLANO observado: ", zp,"\n")
-            gfeature = Generic_feature(ls.mainPlanes[x], ground_equation=self.ground_equation)
-            scene_features.append(gfeature)
+        for x in range(len(planes_list)):
+            id = self.ekf.calculate_mahalanobis(planes_list[x])
+            z_medido = planes_list[x].equation[3]*np.asarray([[planes_list[x].equation[0]], [planes_list[x].equation[1]], [planes_list[x].equation[2]]])
+            id = -1
+            if(not id == -1):
+                planes_list[x].move(self.ekf)
+                gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
+                older_feature = self.get_feature_from_id(id)
+                d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
+                if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior):
+                    older_feature.correspond(gfeature, self.ekf)
+                else:
+                    id = -1
+            if id == -1:
+                i = self.ekf.add_plane(z_medido)
+                planes_list[x].move(self.ekf)
+                gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
+                gfeature.id = i
+                self.features_objects.append(gfeature)
 
 
-        for x in range(len(ls.secundaryPlanes)):
-            ls.secundaryPlanes[x].move(self.ekf)
-            gfeature = Generic_feature(ls.secundaryPlanes[x], ground_equation=self.ground_equation)
-            scene_features.append(gfeature)
 
         for x in range(len(ls.mainCylinders)):
             ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
             gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
             scene_features.append(gfeature)
 
-        if(len(self.features_objects)>0):
-            for i_cena in range(len(scene_features)):
-                ja_existe = False
-                list_to_delete = []
-                for i_global in range(len(self.features_objects)):
-                    associou = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.ekf)
-                    if(associou):
-                        ja_existe = True
-                        if isinstance(scene_features[i_cena].feat,Cylinder) and isinstance(self.features_objects[i_global].feat,Plane):
-                            # Remove all planes that can be part of this cylinder
-                            self.features_objects[i_global].feat.color = scene_features[i_cena].feat.color
-                            list_to_delete.append(self.features_objects[i_global])
-                            #self.features_objects.append(scene_features[i_cena])
-                        #break
-                if(not ja_existe):
-                    if isinstance(scene_features[i_cena].feat,Plane):
-                        z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
-                        i = self.ekf.add_plane(z_medido)
-                        scene_features[i_cena].id = i
-                    self.features_objects.append(scene_features[i_cena])
 
-                else:
-                    if isinstance(scene_features[i_cena].feat,Cylinder) and list_to_delete:
-                    # If already exists, delete all correspondences
-                        self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
-                        self.features_objects.append(scene_features[i_cena])
+        ################### Associação de dados antiga
+        # if(len(self.features_objects)>0):
+        #     for i_cena in range(len(scene_features)):
+        #         ja_existe = False
+        #         list_to_delete = []
+        #         for i_global in range(len(self.features_objects)):
+        #             associou = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.ekf)
+        #             if(associou):
+        #                 ja_existe = True
+        #                 if isinstance(scene_features[i_cena].feat,Cylinder) and isinstance(self.features_objects[i_global].feat,Plane):
+        #                     # Remove all planes that can be part of this cylinder
+        #                     self.features_objects[i_global].feat.color = scene_features[i_cena].feat.color
+        #                     list_to_delete.append(self.features_objects[i_global])
+        #                     #self.features_objects.append(scene_features[i_cena])
+        #                 #break
+        #         if(not ja_existe):
+        #             if isinstance(scene_features[i_cena].feat,Plane):
+        #                 z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
+        #                 i = self.ekf.add_plane(z_medido)
+        #                 scene_features[i_cena].id = i
+        #             self.features_objects.append(scene_features[i_cena])
+
+        #         else:
+        #             if isinstance(scene_features[i_cena].feat,Cylinder) and list_to_delete:
+        #             # If already exists, delete all correspondences
+        #                 self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
+        #                 self.features_objects.append(scene_features[i_cena])
                     
-        else:
-            for i_cena in range(len(scene_features)):
-                if isinstance(scene_features[i_cena].feat,Plane):
-                    z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
-                    i = self.ekf.add_plane(z_medido)
-                    scene_features[i_cena].id = i
-                self.features_objects.append(scene_features[i_cena])
-                #self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
+        # else:
+        #     for i_cena in range(len(scene_features)):
+        #         if isinstance(scene_features[i_cena].feat,Plane):
+        #             z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
+        #             i = self.ekf.add_plane(z_medido)
+        #             scene_features[i_cena].id = i
+        #         self.features_objects.append(scene_features[i_cena])
+        #         self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
         self.fet_geo = []
+
         # Map cleaning and feature merge
         # Detect cuboid
         # found_cuboid = True
@@ -374,28 +378,33 @@ class GlobalScene:
         #         found_cuboid = True
 
         # Map cleaning
-        if(i % 1 == 0):
-            print("------------------------")
-            print("TA FAZENDO MAP CLEANING")
-            print("------------------------")
-            limpou_objeto = True
-            while limpou_objeto:
-                list_to_delete = []
-                for i_global1 in range(len(self.features_objects)):
-                    #if(self.features_objects[i_global1].self.running_geo[""])
-                    for i_global2 in range(len(self.features_objects)):
-                        if(not (i_global1 == i_global2)):
-                            associou = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.ekf)
-                            if(associou):
-                                list_to_delete.append(self.features_objects[i_global2])
-                                break
-                    if list_to_delete:
-                        break
-                if list_to_delete:
-                    self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
-                    limpou_objeto = True
-                else:
-                    limpou_objeto = False
+        # if(i % 1 == 0):
+        #     print("------------------------")
+        #     print("TA FAZENDO MAP CLEANING")
+        #     print("------------------------")
+        #     limpou_objeto = True
+        #     while limpou_objeto:
+        #         list_to_delete = []
+        #         for i_global1 in range(len(self.features_objects)):
+        #             #if(self.features_objects[i_global1].self.running_geo[""])
+        #             for i_global2 in range(len(self.features_objects)):
+        #                 if(not (i_global1 == i_global2)):
+        #                     associou = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.ekf)
+        #                     if(associou):
+        #                         self.ekf.delete_feature(self.features_objects[i_global2].id)
+        #                         # Move todos os índices maiores que aquele pra frente
+        #                         for ifeat in self.features_objects:
+        #                             if self.features_objects[i_global2].id < ifeat.id:
+        #                                 ifeat.id = ifeat.id-1
+        #                         list_to_delete.append(self.features_objects[i_global2])
+        #                         break
+        #             if list_to_delete:
+        #                 break
+        #         if list_to_delete:
+        #             self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
+        #             limpou_objeto = True
+        #         else:
+        #             limpou_objeto = False
 
 
 
