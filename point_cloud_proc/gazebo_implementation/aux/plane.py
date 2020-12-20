@@ -140,6 +140,11 @@ class Plane:
         tranlation = atual_loc
 
 
+        # inlin = np.dot(self.inliers, rotMatrix.T) + tranlation
+        # cent = np.mean(inlin, axis=0)
+        # vec = np.dot(rotMatrix, [self.equation[0], self.equation[1], self.equation[2]])
+        # d = -np.sum(np.multiply(vec, cent))
+        # uv = d*np.asarray([[vec[0]], [vec[1]],[vec[2]]])
 
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
         self.points_main = np.dot(self.points_main, rotMatrix.T) + tranlation
@@ -147,7 +152,14 @@ class Plane:
         self.centroid = np.mean(self.inliers, axis=0)
         #d = self.equation[3] + np.dot(vec, tranlation)
         Z = self.equation[3]*np.asarray([[self.equation[0]],[self.equation[1]],[self.equation[2]]])
-        N = apply_g(ekf.x_m, Z)
+        N = apply_g_plane(ekf.x_m, Z)
+
+
+        # print("Nd: ",N)
+        # print("Nc:", uv)
+
+
+
         d = np.linalg.norm(N)
         a = N[0,0]/d
         b = N[1,0]/d
@@ -253,7 +265,17 @@ class Plane:
         self.width = width
         self.height = height
         self.points_main = inliers_plano_desrotacionado
+        centroidantes = self.centroid
         self.centroid = np.mean(self.points_main, axis=0)
+        centroiddepois = self.centroid
+
+        print("DIFERENÇA DE CENTROIDES: ", np.linalg.norm(centroidantes-centroiddepois))
+        discentnormal = np.dot((centroidantes-centroiddepois),np.asarray([self.equation[0], self.equation[1], self.equation[2]]))
+        # O que me interessa mesmo aqui é mudança da centroide mas em direção a normal do plano. Não tem problema a centroide mudar na direção da superfície do plano
+        print("DIFERENÇA DE CENTROIDES na direção do plano: ",discentnormal)
+        if(np.abs(discentnormal) > 0.8):
+            self.color = (1, 0, 0)
+            return False
         return True
         # else:
         #     return False

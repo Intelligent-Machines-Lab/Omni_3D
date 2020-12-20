@@ -135,7 +135,7 @@ class GlobalScene:
     #     vis.destroy_window()
 
 
-    def add_pcd(self, pcd, commands_odom_linear, commands_odom_angular, duration, i):
+    def add_pcd(self, pcd, commands_odom_linear, commands_odom_angular, duration, i, vel_pos_real=[0,0,0], vel_orienta_real=[0, 0, 0,]):
         self.iatual = i
         last_loc = np.asarray([0, 0, 0])
         last_angulo = np.asarray([0, 0, 0])
@@ -159,6 +159,16 @@ class GlobalScene:
         vel_linear_body[1] = - vel_linear_body[1]
         vel_linear_body[2] = - vel_linear_body[2]
 
+
+        vel_pos_real = np.asarray(vel_pos_real)
+        vel_orienta_real = np.asarray(vel_orienta_real)
+        vel_orienta_real[2] = - vel_orienta_real[2]
+        vel_orienta_real[1] = - vel_orienta_real[1]
+        vel_pos_real[1] = - vel_pos_real[1]
+        vel_pos_real[2] = - vel_pos_real[2]
+
+        u_real = duration*np.asarray([[vel_pos_real[0]], [vel_orienta_real[2]]])
+
         # print("vel_angular_body: "+str(vel_angular_body))
         # print("vel_linear_body: "+str(vel_linear_body))
         # Change to inertial frame
@@ -167,8 +177,18 @@ class GlobalScene:
 
 
         # KALMAN FILTER --------------------------------------------
-        u = np.asarray([[vel_linear_body.T[0]],
-                        [vel_angular_body.T[2]]])
+        mu, sigma = 0, 0.3 # mean and standard deviation
+        noise_x = np.random.normal(mu, sigma, 1)
+
+        mu, sigma = 0, (1.5*np.pi/180) # mean and standard deviation
+        noise_theta = np.random.normal(mu, sigma, 1)
+
+        print('noise x: \n', noise_x)
+        print('noise_theta: \n', noise_theta)
+        u = duration*np.asarray([[vel_linear_body.T[0] + noise_x[0]],
+                                 [vel_angular_body.T[2] + 0*noise_theta[0]]])
+
+        print(u)
 
         self.ekf.propagate(u)
         # if self.ekf.num_total_features['plane'] > 3:
@@ -230,20 +250,35 @@ class GlobalScene:
         for x in range(len(planes_list)):
             id = self.ekf.calculate_mahalanobis(planes_list[x])
             z_medido = planes_list[x].equation[3]*np.asarray([[planes_list[x].equation[0]], [planes_list[x].equation[1]], [planes_list[x].equation[2]]])
-            id = -1
+            #id = -1
+            planes_list[x].move(self.ekf)
+            gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
             if(not id == -1):
-                planes_list[x].move(self.ekf)
-                gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
                 older_feature = self.get_feature_from_id(id)
+                # normal_feature = np.asarray([older_feature.feat.equation[0], older_feature.feat.equation[1], older_feature.feat.equation[2]])
+                # normal_candidate = np.asarray([gfeature.feat.equation[0], gfeature.feat.equation[1], gfeature.feat.equation[2]])
+                # # Align normals
+                # bigger_axis = np.argmax(np.abs(normal_feature))
+                # if not (np.sign(normal_feature[bigger_axis]) == np.sign(normal_candidate[bigger_axis])):
+                #     normal_candidate = -normal_candidate
+                # errorNormal = (np.abs((normal_feature[0]-normal_candidate[0]))+np.abs((normal_feature[1]-normal_candidate[1]))+np.abs((normal_feature[2]-normal_candidate[2])))
+                
+                # if not(errorNormal>0.3):
                 d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
                 if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior):
-                    older_feature.correspond(gfeature, self.ekf)
+                    area1 = older_feature.feat.width*older_feature.feat.height
+                    area2 = gfeature.feat.width*gfeature.feat.height
+                    if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
+                        if not older_feature.correspond(gfeature, self.ekf):
+                            id = -1
+                    else:
+                        id = -1
                 else:
                     id = -1
+                # else:
+                #     id = -1
             if id == -1:
                 i = self.ekf.add_plane(z_medido)
-                planes_list[x].move(self.ekf)
-                gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
                 gfeature.id = i
                 self.features_objects.append(gfeature)
 
@@ -272,7 +307,7 @@ class GlobalScene:
         #                 #break
         #         if(not ja_existe):
         #             if isinstance(scene_features[i_cena].feat,Plane):
-        #                 z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
+        #                 z_medido = apply_h_plane(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
         #                 i = self.ekf.add_plane(z_medido)
         #                 scene_features[i_cena].id = i
         #             self.features_objects.append(scene_features[i_cena])
@@ -286,7 +321,7 @@ class GlobalScene:
         # else:
         #     for i_cena in range(len(scene_features)):
         #         if isinstance(scene_features[i_cena].feat,Plane):
-        #             z_medido = apply_h(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
+        #             z_medido = apply_h_plane(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
         #             i = self.ekf.add_plane(z_medido)
         #             scene_features[i_cena].id = i
         #         self.features_objects.append(scene_features[i_cena])
@@ -432,6 +467,7 @@ class GlobalScene:
             #plt.show()
             #ax.plot(atual_loc[:, 0],atual_loc[:, 1],atual_loc[:, 2])
 
+        self.ekf.save_file(u_real)
 
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)

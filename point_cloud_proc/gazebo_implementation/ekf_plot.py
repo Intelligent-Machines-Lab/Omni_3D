@@ -21,7 +21,6 @@ def axisEqual3D(ax):
 
 def threaded_function(ekflist, prop):
     x_p_list_total = ekflist['x_p_list']
-    print(x_p_list_total)
     P_p_list_total = ekflist['P_p_list']
     x_p_list = []
     P_p_list = []
@@ -29,21 +28,108 @@ def threaded_function(ekflist, prop):
         x_p_list.append(x_p[:3, :])
     x_p_list = np.asarray(x_p_list)
 
-
     for p_p in P_p_list_total:
         P_p_list.append(p_p[:3, :3])
     P_p_list = np.asarray(P_p_list)
 
-    print('x_p_list: \n',x_p_list)
-    #print('P_p_list: \n',x_p_list)
+
+    x_m_list_total = ekflist['x_m_list']
+    P_m_list_total = ekflist['P_m_list']
+    x_m_list = []
+    P_m_list = []
+    for x_m in x_m_list_total:
+        x_m_list.append(x_m[:3, :])
+    x_m_list = np.asarray(x_m_list)
+
+    for p_m in P_m_list_total:
+        P_m_list.append(p_m[:3, :3])
+    P_m_list = np.asarray(P_m_list)
+
+
+
+
+    x_real_list = np.asarray(ekflist['x_real_list'])
+
+    print('x_real_list_total: \n',x_real_list)
 
     xx_p = x_p_list[:, 0, 0]
     xy_p = x_p_list[:, 1, 0]
     xtheta_p = x_p_list[:, 2, 0]
 
+    xx_m = x_m_list[:, 0, 0]
+    xy_m = x_m_list[:, 1, 0]
+    xtheta_m = x_m_list[:, 2, 0]
+
+    xx_real = x_real_list[:, 0, 0]
+    xy_real = x_real_list[:, 1, 0]
+    xtheta_real = x_real_list[:, 2, 0]
+
     ppx = P_p_list[:, 0, 0]
     ppy = P_p_list[:, 1, 1]
     pptheta = P_p_list[:, 2, 2]
+
+    pmx = P_p_list[:, 0, 0]
+    pmy = P_p_list[:, 1, 1]
+    pmtheta = P_p_list[:, 2, 2]
+
+    xx_pm_list = []
+    xy_pm_list = []
+    xtheta_pm_list = []
+
+    px_pm_list = []
+    py_pm_list = []
+    ptheta_pm_list = []
+
+    xreal_pm_list = []
+    yreal_pm_list = []
+    thetareal_pm_list = []
+
+    ipose_list = []
+    for ipose in range(ppx.shape[0]):
+        xx_pm_list.append(xx_p[ipose])
+        xx_pm_list.append(xx_m[ipose])
+
+        xy_pm_list.append(xy_p[ipose])
+        xy_pm_list.append(xy_m[ipose])
+
+        xtheta_pm_list.append(xtheta_p[ipose])
+        xtheta_pm_list.append(xtheta_m[ipose])
+
+        px_pm_list.append(ppx[ipose])
+        px_pm_list.append(pmx[ipose])
+
+        py_pm_list.append(ppy[ipose])
+        py_pm_list.append(pmy[ipose])
+
+        ptheta_pm_list.append(pptheta[ipose])
+        ptheta_pm_list.append(pmtheta[ipose])
+
+        xreal_pm_list.append(xx_real[ipose])
+        xreal_pm_list.append(xx_real[ipose])
+
+        yreal_pm_list.append(xy_real[ipose])
+        yreal_pm_list.append(xy_real[ipose])
+
+        thetareal_pm_list.append(xtheta_real[ipose])
+        thetareal_pm_list.append(xtheta_real[ipose])
+
+        ipose_list.append(ipose)
+        ipose_list.append(ipose)
+
+
+    xx_pm_list = np.asarray(xx_pm_list)
+    xy_pm_list = np.asarray(xy_pm_list)
+    xtheta_pm_list = np.asarray(xtheta_pm_list)
+
+    px_pm_list = np.asarray(px_pm_list)
+    py_pm_list = np.asarray(py_pm_list)
+    ptheta_pm_list = np.asarray(ptheta_pm_list)
+
+    xreal_pm_list = np.asarray(xreal_pm_list)
+    yreal_pm_list = np.asarray(yreal_pm_list)
+    thetareal_pm_list = np.asarray(thetareal_pm_list)
+
+    ipose_list = np.asarray(ipose_list)
 
     print('xx_p', xx_p)
     print('xy_p', xy_p)
@@ -66,23 +152,24 @@ def threaded_function(ekflist, prop):
     ax8 = fig.add_subplot(gs[3, :])
 
     fig.suptitle('Estados')
+    print("ERROS:\n",(xreal_pm_list-xx_pm_list))
 
-    ax1.plot(xx_p, label='x_m')
-    ax1.plot(xx_p+3*np.sqrt(ppx), label='+3*sqrt(p_p_x)')
-    ax1.plot(xx_p-3*np.sqrt(ppx), label='-3*sqrt(p_p_x)')
-    ax1.legend(loc="upper right")
+    ax1.plot(ipose_list, (xreal_pm_list-xx_pm_list), label='x_m')
+    ax1.plot(ipose_list, 3*np.sqrt(px_pm_list), label='+3*sqrt(p_p_x)')
+    ax1.plot(ipose_list, -3*np.sqrt(px_pm_list), label='-3*sqrt(p_p_x)')
+    #ax1.legend(loc="upper right")
     ax1.grid()
 
-    ax2.plot(xy_p, label='y_m')
-    ax2.plot(xy_p + 3*np.sqrt(ppy), label='+3*sqrt(p_p_y)')
-    ax2.plot(xy_p - 3*np.sqrt(ppy), label='-3*sqrt(p_p_y)')
-    ax2.legend(loc="upper right")
+    ax2.plot(ipose_list, (yreal_pm_list-xy_pm_list), label='y_m')
+    ax2.plot(ipose_list, 3*np.sqrt(py_pm_list), label='+3*sqrt(p_p_y)')
+    ax2.plot(ipose_list, -3*np.sqrt(py_pm_list), label='-3*sqrt(p_p_y)')
+    #ax2.legend(loc="upper right")
     ax2.grid()
 
-    ax3.plot(xtheta_p, label='theta_m')
-    ax3.plot(xtheta_p+3*np.sqrt(pptheta), label='+3*sqrt(p_p_theta)')
-    ax3.plot(xtheta_p-3*np.sqrt(pptheta), label='-3*sqrt(p_p_theta)')
-    ax3.legend(loc="upper right")
+    ax3.plot(ipose_list, (thetareal_pm_list-xtheta_pm_list), label='theta_m')
+    ax3.plot(ipose_list, 3*np.sqrt(ptheta_pm_list), label='+3*sqrt(p_p_theta)')
+    ax3.plot(ipose_list, -3*np.sqrt(ptheta_pm_list), label='-3*sqrt(p_p_theta)')
+    #ax3.legend(loc="upper right")
     ax3.grid()
 
 
@@ -144,14 +231,18 @@ def threaded_function(ekflist, prop):
                 break
     ax7.grid()
     ax7.axis('equal')
-    ax7.plot(xy_p, xx_p, "--")
-    ax7.scatter(xy_p[-1], xx_p[-1] , marker='o')
+    ax7.plot(xy_m, xx_m, "--")
+    ax7.scatter(xy_m[-1], xx_m[-1] , marker='o')
+    ax7.plot(xy_real, xx_real, "--")
+    ax7.scatter(xy_real[-1], xx_real[-1] , marker='x')
 
     ax4.legend(loc="upper right")
     ax4.grid()
-    xz_p =  np.stack([0]*xy_p.shape[0],0)
-    ax4.plot(xx_p, xy_p,xz_p, "--")
-    ax4.scatter(xx_p[-1], xy_p[-1],xz_p[-1], marker='o')
+    xz_m =  np.stack([0]*xy_m.shape[0],0)
+    ax4.plot( xx_m,xy_m,xz_m, "--")
+    ax4.scatter( xx_m[-1],xy_m[-1],xz_m[-1], marker='o')
+    ax4.plot( xx_real,xy_real,xz_m, "--")
+    ax4.scatter( xx_real[-1],xy_real[-1],xz_m[-1] , marker='x')
     ax4.view_init(-140, -30)
 
 

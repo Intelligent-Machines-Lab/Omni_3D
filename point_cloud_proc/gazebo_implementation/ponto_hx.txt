@@ -1,0 +1,149 @@
+ 
+h1 =
+ 
+- cos(psi)*(x - zx) - sin(psi)*(y - zy)
+ 
+ 
+h2 =
+ 
+sin(psi)*(x - zx) - cos(psi)*(y - zy)
+ 
+ 
+h3 =
+ 
+zz
+ 
+ 
+dh1dx =
+ 
+-cos(psi)
+ 
+ 
+dh1dx =
+ 
+-cos(psi)
+ 
+
+l =
+
+    '-\cos\left(\mathrm{psi}\right)'
+
+ 
+dh1dy =
+ 
+-sin(psi)
+ 
+ 
+dh1dy =
+ 
+-sin(psi)
+ 
+
+l =
+
+    '-\sin\left(\mathrm{psi}\right)'
+
+ 
+dh1dpsi =
+ 
+sin(psi)*(x - zx) - cos(psi)*(y - zy)
+ 
+ 
+dh1dpsi =
+ 
+sin(psi)*(x - zx) - cos(psi)*(y - zy)
+ 
+
+l =
+
+    '\sin\left(\mathrm{psi}\right)\,\left(x-\mathrm{zx}\right)-\cos\left(\mathrm{psi}\right)\,\left(y-\mathrm{zy}\right)'
+
+ 
+dh2dx =
+ 
+sin(psi)
+ 
+ 
+dh2dx =
+ 
+sin(psi)
+ 
+
+l =
+
+    '\sin\left(\mathrm{psi}\right)'
+
+ 
+dh2dy =
+ 
+-cos(psi)
+ 
+ 
+dh2dy =
+ 
+-cos(psi)
+ 
+
+l =
+
+    '-\cos\left(\mathrm{psi}\right)'
+
+ 
+dh2dpsi =
+ 
+cos(psi)*(x - zx) + sin(psi)*(y - zy)
+ 
+ 
+dh2dpsi =
+ 
+cos(psi)*(x - zx) + sin(psi)*(y - zy)
+ 
+
+l =
+
+    '\cos\left(\mathrm{psi}\right)\,\left(x-\mathrm{zx}\right)+\sin\left(\mathrm{psi}\right)\,\left(y-\mathrm{zy}\right)'
+
+ 
+dh3dx =
+ 
+0
+ 
+ 
+dh3dx =
+ 
+0
+ 
+
+l =
+
+    '0'
+
+ 
+dh3dy =
+ 
+0
+ 
+ 
+dh3dy =
+ 
+0
+ 
+
+l =
+
+    '0'
+
+ 
+dh3dpsi =
+ 
+0
+ 
+ 
+dh3dpsi =
+ 
+0
+ 
+
+l =
+
+    '0'

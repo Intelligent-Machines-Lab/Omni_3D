@@ -54,7 +54,7 @@ class Generic_feature:
                                 #print("Candidate feature: "+str(compare_feat.feat.equation))
                                 #print("Erro "+str(errorNormal))
                                 Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
-                                Z = apply_h(ekf.x_m, Z)
+                                Z = apply_h_plane(ekf.x_m, Z)
                                 N = ekf.upload_plane(Z, self.id)
                                 d = np.linalg.norm(N)
                                 a = N[0,0]/d
@@ -178,18 +178,25 @@ class Generic_feature:
         if isinstance(self.feat,Plane):
             if isinstance(compare_feat.feat,Plane):
                 Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
-                Z = apply_h(ekf.x_m, Z)
-                N = ekf.upload_plane(Z, self.id)
+                Z = apply_h_plane(ekf.x_m, Z)
+                N = ekf.upload_plane(Z, self.id, only_test= True)
                 d = np.linalg.norm(N)
                 a = N[0,0]/d
                 b = N[1,0]/d
                 c = N[2,0]/d
                 neweq = [a, b, c, d]
-                if(self.feat.append_plane(compare_feat, neweq)):
+                plane_cobaia = copy.deepcopy(self.feat)
+                if(plane_cobaia.append_plane(compare_feat, neweq)):
+                    N = ekf.upload_plane(Z, self.id, only_test= False)
+                    self.feat.append_plane(compare_feat, neweq)
                     self.running_geo["plane"] = self.running_geo["plane"]+1
                     self.running_geo["total"] = self.running_geo["total"]+1
+                    return True
+                else:
+                    return False
 
     def getProprieties(self):
         prop = self.feat.getProrieties()
         prop["runner_geo"] = self.running_geo
+        prop["id"] = self.id
         return prop

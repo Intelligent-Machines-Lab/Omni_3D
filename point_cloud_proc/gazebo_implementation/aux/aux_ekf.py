@@ -2,6 +2,7 @@ import numpy as np
 from aux.aux import *
 import pickle
 from operator import itemgetter
+from scipy.spatial import distance
 
 class ekf:
 
@@ -9,8 +10,16 @@ class ekf:
         self.x_m, self.P_m  = init_x_P()
         self.x_p, self.P_p  = init_x_P()
 
+        self.x_real = np.asarray([[0],[0],[0]])
+
         self.x_p_list = []
         self.P_p_list = []
+
+        self.x_m_list = []
+        self.P_m_list = []
+
+        self.x_real_list= []
+
         self.num_total_features = {'plane':0}
 
 
@@ -46,19 +55,7 @@ class ekf:
         self.P_m = self.P_p
         self.x_m = self.x_p
 
-        self.x_p_list.append(self.x_p.copy())
 
-        self.P_p_list.append(self.P_p.copy())
-
-        # print("f: ",self.x_p)
-        # print("P: ",self.P_p)
-        nsalva = {}
-        nsalva['x_p_list'] =  self.x_p_list
-        nsalva['P_p_list'] =  self.P_p_list
-
-        f = open('ekf.pckl', 'wb')
-        pickle.dump(nsalva, f)
-        f.close()
 
     def add_plane(self, Z):
         i_plano = self.num_total_features['plane'] # pega id do próximo plano
@@ -71,11 +68,11 @@ class ekf:
         Yz = get_Yz(Gx, Gz, self.P_m)
         # print('Yz ', Yz)
 
-        N = apply_g(self.x_m, Z)
+        N = apply_g_plane(self.x_m, Z)
         self.x_m = np.vstack((self.x_m, N))
         # print("New Feature: ", N)
         # print("New x: ", self.x_m)
-        W = get_W()
+        W = get_W_plane()
         meio_bloco = np.block([[self.P_m,                                   np.zeros((self.P_m.shape[0], W.shape[1]))],
                                [np.zeros((W.shape[0], self.P_m.shape[1])),  W]])
         # print('meio_bloco: \n', meio_bloco)
@@ -84,46 +81,70 @@ class ekf:
         return i_plano
 
 
-    def upload_plane(self, Z, id):
+    def upload_plane(self, Z, id, only_test=False):
         Hxv = get_Hxv_plane(self.x_m, Z)
         Hxp = get_Hxp_plane(self.x_m, Z)
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_plane()
-        W = get_W()
+        W = get_W_plane()
 
         S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
         K = self.P_m @ Hx.T @ np.linalg.inv(S)
 
-        v = Z - apply_h(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)])
+        v = Z - apply_h_plane(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)])
 
-        self.x_m = self.x_m + K @ v
-        self.P_m = self.P_m - K @ Hx @ self.P_m
-
-        return self.x_m[(3+id*3):(3+(id+1)*3)]
+        if only_test:
+            x_m_test = self.x_m + K @ v
+            P_m_test = self.P_m - K @ Hx @ self.P_m
+            return x_m_test[(3+id*3):(3+(id+1)*3)]
+        else:
+            self.x_m = self.x_m + K @ v
+            self.P_m = self.P_m - K @ Hx @ self.P_m
+            return self.x_m[(3+id*3):(3+(id+1)*3)]
 
     def calculate_mahalanobis(self, feature):
         eq = feature.equation
         N = eq[3]*np.asarray([[eq[0]],[eq[1]],[eq[2]]])
         distances = []
         for id in range(self.num_total_features['plane']):
-            Zp = apply_h(self.x_m, self.get_feature_from_id(id))
+            Zp = apply_h_plane(self.x_m, self.get_feature_from_id(id))
             Hxv = get_Hxv_plane(self.x_m, Zp)
             Hxp = get_Hxp_plane(self.x_m, Zp)
             Hx = get_Hx(Hxv, Hxp, id, self.P_m)
             Hw = get_Hw_plane()
-            W = get_W()
+            W = get_W_plane()
 
             S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
             y = N - Zp
+            y = np.square(y)
             d = y.T @ np.linalg.inv(S) @ y
-            print("Zp: ",Zp.T, " N: ",N.T, " d: ", d)
-            distances.append(d[0][0])
+            d2 = distance.mahalanobis(N, Zp, np.linalg.inv(S))
+            #print("Zp: ",Zp.T, " N: ",N.T, " d: ", d[0][0], " d2: ", d2)
+            distances.append(np.sqrt(d[0][0]))
         if distances:
             idmin = min(enumerate(distances), key=itemgetter(1))[0] 
-            if(distances[idmin] > 50):
+            if(distances[idmin] > 5):
                 idmin = -1
         else:
             idmin = -1
+
+
+        # if(not id == -1):
+        #     feature.move(self)
+        #     gfeature = Generic_feature(feature, ground_equation=self.ground_equation)
+        #     older_feature = self.get_feature_from_id(id)
+        #     d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
+        #     if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior):
+        #         area1 = older_feature.feat.width*older_feature.feat.height
+        #         area2 = gfeature.feat.width*gfeature.feat.height
+        #         if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
+        #             older_feature.correspond(gfeature, self.ekf)
+        #         else:
+        #             id = -1
+        #     else:
+        #         id = -1
+        #     # else:
+        #     #     id = -1
 
 
         print("Associação: ",distances, " id menor: ",idmin)
@@ -145,6 +166,34 @@ class ekf:
         self.P_m = np.delete(self.P_m,(np.s_[(3+id*3):(3+(id+1)*3)]), axis=1)
 
         self.num_total_features['plane'] = self.num_total_features['plane']-1
+
+
+    def save_file(self, u_real):
+        self.x_real = apply_f(self.x_real, u_real)
+
+        self.x_p_list.append(self.x_p.copy())
+        self.P_p_list.append(self.P_p.copy())
+
+        self.x_m_list.append(self.x_m.copy())
+        self.P_m_list.append(self.P_m.copy())
+
+
+
+        self.x_real_list.append(self.x_real.copy())
+        # print("f: ",self.x_p)
+        # print("P: ",self.P_p)
+        nsalva = {}
+        nsalva['x_p_list'] =  self.x_p_list
+        nsalva['P_p_list'] =  self.P_p_list
+
+        nsalva['x_m_list'] =  self.x_m_list
+        nsalva['P_m_list'] =  self.P_m_list
+
+        nsalva['x_real_list'] =  self.x_real_list
+
+        f = open('ekf.pckl', 'wb')
+        pickle.dump(nsalva, f)
+        f.close()
 
 
 
@@ -192,8 +241,8 @@ def init_x_P():
     return x, P
 
 def get_V():
-    sigma_x = 0.1/3
-    sigma_psi = (1.5*np.pi/180)/3
+    sigma_x = 0.3
+    sigma_psi = 0*(1.5*np.pi/180)/3
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])
@@ -220,7 +269,7 @@ def get_Fv(x, u):
     return Fv
 
 
-def apply_h(x, N):
+def apply_h_plane(x, N):
     d = np.linalg.norm(N)
     a = N[0,0]/d
     b = N[1,0]/d
@@ -290,15 +339,8 @@ def get_Hxp_plane(x, N):
 
 
 
-def apply_g(x, Zp):
-    # d = np.linalg.norm(Zp)
-    # a = Zp[0,0]/d
-    # b = Zp[1,0]/d
-    # c = Zp[2,0]/d
+def apply_g_plane(x, Zp):
 
-    # ux = a*(d - a*x[0,0] - b*x[1,0])
-    # uy = b*(d - a*x[0,0] - b*x[1,0])
-    # uz = c*(d - a*x[0,0] - b*x[1,0])
 
     Zp = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]), Zp)
 
@@ -361,10 +403,10 @@ def get_Gz_plane(x, Zp):
                      [dg3dnx, dg3dny, dg3dnz]])
     return Gz
 
-def get_W():
-    sigma_x = 0.1/3
-    sigma_y = 0.1/3
-    sigma_z =0.1/3
+def get_W_plane():
+    sigma_x = 0.01
+    sigma_y = 0.01
+    sigma_z = 0.01
 
     W = np.asarray([[sigma_x**2, 0, 0],
                     [0, sigma_y**2, 0],
@@ -372,6 +414,132 @@ def get_W():
     return W
 
 def get_Hw_plane():
+    Hw = np.asarray([[1, 0, 0],
+                    [0, 1, 0],
+                    [0, 0, 1]])
+
+    return Hw
+
+
+
+#############################################################################################
+# POINT FEATURE - CYLINDER AND CUBOID
+#############################################################################################
+
+
+
+def apply_h_point(x, Z):
+
+    zpx = np.cos(x[2,0])*(Z[0,0] - x[0,0]) + np.sin(x[2,0])*(Z[1,0] - x[1,0])
+    zpy = -np.sin(x[2,0])*(Z[0,0] - x[0,0]) + np.cos(x[2,0])*(Z[1,0] - x[1,0])
+    zpz = Z[2,0]
+
+    zp = np.asarray( [[zpx],
+                      [zpy],
+                      [zpz]])
+    return zp
+
+def apply_g_point(x, C):
+    zx = x[0,0] + C[0,0]*np.cos(x[2,0]) - C[1,0]*np.sin(x[2,0])
+    zy = x[1,0] + C[1,0]*np.cos(x[2,0]) + C[0,0]*np.sin(x[2,0])
+    zz = C[2,0]
+
+    z = np.asarray( [[zx],
+                     [zy],
+                     [zz]])
+    return Z
+
+
+def get_Hxv_point(x, Z):
+
+    hx11 = -np.cos(x[2,0])
+    hx12 = -np.sin(x[2,0])
+    hx13 = np.sin(x[2,0])*(x[0,0] - Z[0,0]) - np.cos(x[2,0])*(x[1,0] - Z[1,0])
+
+    hx21 = np.sin(x[2,0])
+    hx22 = -np.cos(x[2,0])
+    hx23 = np.cos(x[2,0])*(x[0,0] - Z[0,0]) + np.sin(x[2,0])*(x[1,0] - Z[1,0])
+
+    hx31 = 0
+    hx32 = 0
+    hx33 = 0
+
+    Hx = np.asarray([[hx11, hx12, hx13],
+                     [hx21, hx22, hx23],
+                     [hx31, hx32, hx33]])
+    return Hx
+
+
+def get_Hxp_point(x, N):
+
+    dh1dnx =  np.cos(x[2,0])
+    dh1dny =  np.sin(x[2,0])
+    dh1dnz = 0
+
+    dh2dnx = -np.sin(x[2,0])
+    dh2dny = np.cos(x[2,0])
+    dh2dnz = 0
+
+    dh3dnx = 0
+    dh3dny = 0
+    dh3dnz = 1
+
+    Hxp = np.asarray([[dh1dnx, dh1dny, dh1dnz],
+                     [dh2dnx, dh2dny, dh2dnz],
+                     [dh3dnx, dh3dny, dh3dnz]])
+    return Hxp
+
+
+def get_Gx_point(x, C):
+
+    dg1dx = 1
+    dg1dy = 0
+    dg1dpsi = - C[1,0]*np.cos(x[2,0]) - C[0,0]*np.sin(x[2,0])
+
+    dg2dx = 0
+    dg2dy = 1
+    dg2dpsi = C[0,0]*np.cos(x[2,0]) - C[1,0]*np.sin(x[2,0])
+
+    dg3dx = 0
+    dg3dy = 0
+    dh3dpsi = 0
+
+    Gxp = np.asarray([[dg1dx, dg1dy, dg1dpsi],
+                     [dg2dx, dg2dy, dg2dpsi],
+                     [dg3dx, dg3dy, dh3dpsi]])
+    return Gxp
+
+def get_Gz_point(x, C):
+
+
+    dg1dnx = np.cos(x[2,0])
+    dg1dny = -np.sin(x[2,0])
+    dg1dnz = 0
+    
+    dg2dnx = np.sin(x[2,0])
+    dg2dny = np.cos(x[2,0])
+    dg2dnz = 0
+
+    dg3dnx = 0
+    dg3dny = 0
+    dg3dnz = 1
+
+    Gz = np.asarray([[dg1dnx, dg1dny, dg1dnz],
+                     [dg2dnx, dg2dny, dg2dnz],
+                     [dg3dnx, dg3dny, dg3dnz]])
+    return Gz
+
+def get_W_point():
+    sigma_x = 0.01
+    sigma_y = 0.01
+    sigma_z = 0.01
+
+    W = np.asarray([[sigma_x**2, 0, 0],
+                    [0, sigma_y**2, 0],
+                    [0, 0, sigma_z**2] ])
+    return W
+
+def get_Hw_point():
     Hw = np.asarray([[1, 0, 0],
                     [0, 1, 0],
                     [0, 0, 1]])

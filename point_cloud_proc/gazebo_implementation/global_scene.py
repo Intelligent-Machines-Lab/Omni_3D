@@ -19,7 +19,7 @@ import threading #thread module imported
 import traceback
 import _thread
 
-nomepasta = "gazebo_dataset2"
+nomepasta = "gazebo_dataset_planes4"
 list_depth = sorted(glob.glob(nomepasta+"/*_depth.png"))
 list_rgb = sorted(glob.glob(nomepasta+"/*_rgb.png"))
 
@@ -42,9 +42,12 @@ last_z = df['pos_z'].values[0]
 
 use_gaussian_noise = False
 
+first_pos = np.asarray([])
+first_orienta = np.asarray([])
+
 
 for a in range(nImages):
-    i = a+0+9
+    i = a+0+0
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
     # dp = cv2.imread(nomepasta+"/"+str(i)+"_depth.png",cv2.IMREAD_UNCHANGED)
@@ -85,7 +88,7 @@ for a in range(nImages):
     # c_linear = np.asarray([z, x, y])
     # c_angular = np.asarray([yaw,roll,pitch])
 
-    t_dur = df['t_command'].values[i]
+    t_dur = 1#df['t_command'].values[i]
     c_linear = [df['c_linear_x'].values[i],
                 df['c_linear_y'].values[i], df['c_linear_z'].values[i]]
 
@@ -93,17 +96,18 @@ for a in range(nImages):
     diff_x = df['pos_x'].values[i]-last_x
     diff_y = df['pos_y'].values[i]-last_y
     diff_z = df['pos_z'].values[i]-last_z
-    c_linear = [np.sqrt(diff_x**2 + diff_y**2), 0, 0]
+    c_linear = [np.sqrt(diff_x**2 + diff_y**2), 0, 0]#/t_dur
 
     diff_angx = np.arctan2(np.sin(df['ang_x'].values[i]-last_angx), np.cos(df['ang_x'].values[i]-last_angx))
     diff_angy = np.arctan2(np.sin(df['ang_y'].values[i]-last_angy), np.cos(df['ang_y'].values[i]-last_angy))
     diff_angz = np.arctan2(np.sin(df['ang_z'].values[i]-last_angz), np.cos(df['ang_z'].values[i]-last_angz))
-    c_angular = [diff_angx, diff_angy, diff_angz]/t_dur
+    c_angular = [diff_angx, diff_angy, diff_angz]#/t_dur
+
 
     print("----------")
     print("Foto ", i)
     print("----------")
-    gc.add_pcd(pcd, c_linear, c_angular, t_dur, i)
+    gc.add_pcd(pcd, c_linear, c_angular, t_dur, i, c_linear, c_angular)
 
     last_x = df['pos_x'].values[i]
     last_y = df['pos_y'].values[i]
