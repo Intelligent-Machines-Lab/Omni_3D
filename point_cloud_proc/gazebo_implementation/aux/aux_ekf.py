@@ -6,6 +6,7 @@ from scipy.spatial import distance
 from aux.aux import *
 import aux.cylinder
 import aux.plane
+import sys
 # from aux.cuboid import Cuboid
 
 
@@ -122,8 +123,14 @@ class ekf:
         W = get_W_plane()
 
         S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
-        K = self.P_m @ Hx.T @ np.linalg.inv(S)
+        print("S: ")
+        print(S)
+        if not np.linalg.cond(S) < 1/sys.float_info.epsilon:
+            print("S é singular RETORNANDO VALOR SEM ATUALIZAÇÃO")
+            print(S)
+            return self.x_m[(3+id*3):(3+(id+1)*3)]
 
+        K = self.P_m @ Hx.T @ np.linalg.inv(S)
         v = Z - apply_h_plane(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)])
 
         if only_test:
@@ -174,6 +181,11 @@ class ekf:
                     S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
                     y = N - Zp
                     y = np.square(y)
+
+                    if not np.linalg.cond(S) < 1/sys.float_info.epsilon:
+                        print("S é singular Impedindo associação")
+                        print(S)
+                        return -1
                     d = y.T @ np.linalg.inv(S) @ y
                     d2 = distance.mahalanobis(N, Zp, np.linalg.inv(S))
                     print("PLANO: Zp: ",Zp.T, " N: ",N.T, " d: ", d[0][0], " d2: ", d2)
@@ -211,8 +223,9 @@ class ekf:
                     # If the feature is from another type, we put a very high distance
                     distances.append(99999)
             if distances:
-                idmin = min(enumerate(distances), key=itemgetter(1))[0] 
-                if(distances[idmin] > 16):
+                idmin = min(enumerate(distances), key=itemgetter(1))[0]
+                # antes tava 16 
+                if(distances[idmin] > 4):
                     idmin = -1
             else:
                 idmin = -1
@@ -333,7 +346,7 @@ def init_x_P():
     return x, P
 
 def get_V():
-    sigma_x = 0.1
+    sigma_x = 0.2
     sigma_psi = (0/3*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
@@ -496,9 +509,9 @@ def get_Gz_plane(x, Zp):
     return Gz
 
 def get_W_plane():
-    sigma_x = 0.05
-    sigma_y = 0.05
-    sigma_z = 0.05
+    sigma_x = 0.2
+    sigma_y = 0.2
+    sigma_z = 0.2
 
     W = np.asarray([[sigma_x**2, 0, 0],
                     [0, sigma_y**2, 0],

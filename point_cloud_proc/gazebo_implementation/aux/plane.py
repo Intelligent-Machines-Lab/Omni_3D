@@ -127,9 +127,16 @@ class Plane:
                 self.points_main = inliers_plano_desrotacionado
                 self.centroid = np.mean(self.points_main, axis=0)
                 valid = True
+
+                # GATE DE VALIDAÇÃO DE ÁREA
+                if self.width * self.height < 2:
+                    valid = False
+                    
             else:
                 #print("PLANO INVÁLIDO")
                 valid = False
+
+
 
         return best_eq, best_inliers, valid
 

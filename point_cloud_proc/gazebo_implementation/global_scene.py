@@ -19,7 +19,8 @@ import threading #thread module imported
 import traceback
 import _thread
 
-nomepasta = "gazebo_dataset_circular_planes"
+#nomepasta = "gazebo_dataset_circular_planes"
+nomepasta = "gazebo_dataset_circular_cylinder1"
 #nomepasta = "gazebo_dataset_planes4"
 #nomepasta = "gazebo_dataset_planes"
 list_depth = sorted(glob.glob(nomepasta+"/*_depth.png"))
@@ -49,7 +50,8 @@ first_orienta = np.asarray([])
 
 
 for a in range(nImages):
-    i = a+0+10
+    i = (a-1)*2+0+25
+
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
     # dp = cv2.imread(nomepasta+"/"+str(i)+"_depth.png",cv2.IMREAD_UNCHANGED)

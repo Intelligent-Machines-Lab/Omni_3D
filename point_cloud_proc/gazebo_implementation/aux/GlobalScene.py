@@ -177,7 +177,7 @@ class GlobalScene:
 
 
         # KALMAN FILTER --------------------------------------------
-        mu, sigma = 0, 0.1 # mean and standard deviation
+        mu, sigma = 0, 0.2 # mean and standard deviation
         noise_x = np.random.normal(mu, sigma, 1)
 
         mu, sigma = 0, (1/3*np.pi/180) # mean and standard deviation
