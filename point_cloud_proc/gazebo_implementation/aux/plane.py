@@ -3,7 +3,7 @@ import numpy as np
 import random
 import copy 
 from aux import *
-from aux.aux_ekf import *
+import aux.aux_ekf as a_ekf
 from aux.qhull_2d import *
 from aux.min_bounding_rect import *
 import matplotlib.pyplot as plt
@@ -152,7 +152,7 @@ class Plane:
         self.centroid = np.mean(self.inliers, axis=0)
         #d = self.equation[3] + np.dot(vec, tranlation)
         Z = self.equation[3]*np.asarray([[self.equation[0]],[self.equation[1]],[self.equation[2]]])
-        N = apply_g_plane(ekf.x_m, Z)
+        N = a_ekf.apply_g_plane(ekf.x_m, Z)
 
 
         # print("Nd: ",N)

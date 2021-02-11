@@ -19,6 +19,14 @@ def axisEqual3D(ax):
     for ctr, dim in zip(centers, 'xyz'):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
+def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
+    z = np.linspace(0, height_z, 50)
+    theta = np.linspace(0, 2*np.pi, 50)
+    theta_grid, z_grid=np.meshgrid(theta, z)
+    x_grid = radius*np.cos(theta_grid) + center_x
+    y_grid = radius*np.sin(theta_grid) + center_y
+    return x_grid,y_grid,z_grid
+
 def threaded_function(ekflist, prop):
     x_p_list_total = ekflist['x_p_list']
     P_p_list_total = ekflist['P_p_list']
@@ -49,6 +57,7 @@ def threaded_function(ekflist, prop):
 
 
     x_real_list = np.asarray(ekflist['x_real_list'])
+    x_errado_list = np.asarray(ekflist['x_errado_list'])
 
     print('x_real_list_total: \n',x_real_list)
 
@@ -63,6 +72,10 @@ def threaded_function(ekflist, prop):
     xx_real = x_real_list[:, 0, 0]
     xy_real = x_real_list[:, 1, 0]
     xtheta_real = x_real_list[:, 2, 0]
+
+    xx_errado = x_errado_list[:, 0, 0]
+    xy_errado = x_errado_list[:, 1, 0]
+    xtheta_errado = x_errado_list[:, 2, 0]
 
     ppx = P_p_list[:, 0, 0]
     ppy = P_p_list[:, 1, 1]
@@ -157,19 +170,19 @@ def threaded_function(ekflist, prop):
     ax1.plot(ipose_list, (xreal_pm_list-xx_pm_list), label='x_m')
     ax1.plot(ipose_list, 3*np.sqrt(px_pm_list), label='+3*sqrt(p_p_x)')
     ax1.plot(ipose_list, -3*np.sqrt(px_pm_list), label='-3*sqrt(p_p_x)')
-    #ax1.legend(loc="upper right")
+    ax1.legend(loc="upper right")
     ax1.grid()
 
     ax2.plot(ipose_list, (yreal_pm_list-xy_pm_list), label='y_m')
     ax2.plot(ipose_list, 3*np.sqrt(py_pm_list), label='+3*sqrt(p_p_y)')
     ax2.plot(ipose_list, -3*np.sqrt(py_pm_list), label='-3*sqrt(p_p_y)')
-    #ax2.legend(loc="upper right")
+    ax2.legend(loc="upper right")
     ax2.grid()
 
     ax3.plot(ipose_list, (thetareal_pm_list-xtheta_pm_list), label='theta_m')
     ax3.plot(ipose_list, 3*np.sqrt(ptheta_pm_list), label='+3*sqrt(p_p_theta)')
     ax3.plot(ipose_list, -3*np.sqrt(ptheta_pm_list), label='-3*sqrt(p_p_theta)')
-    #ax3.legend(loc="upper right")
+    ax3.legend(loc="upper right")
     ax3.grid()
 
 
@@ -227,22 +240,35 @@ def threaded_function(ekflist, prop):
 
                     # ax4.plot(xx_p, xy_p , label='Posição')
 
-                    
-                break
+            if((key == "cylinders")):
+                for o in range(len(prop[key])):
+                    # print("EQ. DO PLANO:",prop[key][o]["equation"])
+                    center = prop[key][o]["center"]
+                    radius = prop[key][o]["radius"]
+                    heightvec = prop[key][o]['height']
+                    height = (heightvec[1]-heightvec[0])
+                    Xc,Yc,Zc = data_for_cylinder_along_z(center[0],center[1],radius,height)
+                    ax4.plot_surface(Xc, Yc, Zc)
+                    ax7.contour(Yc,Xc,Zc , 20, cmap='RdGy', linewidths=2)
+
     ax7.grid()
     ax7.axis('equal')
     ax7.plot(xy_m, xx_m, "--")
-    ax7.scatter(xy_m[-1], xx_m[-1] , marker='o')
+    ax7.scatter(xy_m[-1], xx_m[-1] , marker='o', label='Estimado')
     ax7.plot(xy_real, xx_real, "--")
-    ax7.scatter(xy_real[-1], xx_real[-1] , marker='x')
+    ax7.scatter(xy_real[-1], xx_real[-1] , marker='x', label='Real')
+    ax7.plot(xy_errado, xx_errado, ".")
+    ax7.scatter(xy_errado[-1], xx_errado[-1] , marker='x', label='Odom')
+    ax7.legend(loc="upper right")
 
     ax4.legend(loc="upper right")
     ax4.grid()
     xz_m =  np.stack([0]*xy_m.shape[0],0)
     ax4.plot( xx_m,xy_m,xz_m, "--")
-    ax4.scatter( xx_m[-1],xy_m[-1],xz_m[-1], marker='o')
+    ax4.scatter( xx_m[-1],xy_m[-1],xz_m[-1], marker='o', label='Estimado')
     ax4.plot( xx_real,xy_real,xz_m, "--")
-    ax4.scatter( xx_real[-1],xy_real[-1],xz_m[-1] , marker='x')
+    ax4.scatter( xx_real[-1],xy_real[-1],xz_m[-1] , marker='x', label='Real')
+    ax4.legend(loc="upper right")
     ax4.view_init(-140, -30)
 
 

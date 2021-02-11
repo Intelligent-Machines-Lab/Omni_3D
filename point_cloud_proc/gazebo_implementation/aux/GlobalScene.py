@@ -177,10 +177,10 @@ class GlobalScene:
 
 
         # KALMAN FILTER --------------------------------------------
-        mu, sigma = 0, 0.3 # mean and standard deviation
+        mu, sigma = 0, 0.1 # mean and standard deviation
         noise_x = np.random.normal(mu, sigma, 1)
 
-        mu, sigma = 0, (1.5*np.pi/180) # mean and standard deviation
+        mu, sigma = 0, (1/3*np.pi/180) # mean and standard deviation
         noise_theta = np.random.normal(mu, sigma, 1)
 
         print('noise x: \n', noise_x)
@@ -191,7 +191,7 @@ class GlobalScene:
         print(u)
 
         self.ekf.propagate(u)
-        # if self.ekf.num_total_features['plane'] > 3:
+        # if self.ekf.num_total_features['feature'] > 3:
         #     neweq = self.ekf.upload_plane(np.asarray([[1], [0], [0]]), 0)
         #     print('neweq: ', neweq)
             # self.ekf.upload_plane(np.asarray([[1], [0], [0]]), 1)
@@ -265,7 +265,7 @@ class GlobalScene:
                 
                 # if not(errorNormal>0.3):
                 d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
-                if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior):
+                if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
                     area1 = older_feature.feat.width*older_feature.feat.height
                     area2 = gfeature.feat.width*gfeature.feat.height
                     if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
@@ -285,9 +285,32 @@ class GlobalScene:
 
 
         for x in range(len(ls.mainCylinders)):
+            #i = self.ekf.add_plane(z_medido)
+            #gfeature.id = i
+            #self.features_objects.append(gfeature)
+
+            cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
+            id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
             ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
             gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
-            scene_features.append(gfeature)
+            if not id == -1:
+                older_feature = self.get_feature_from_id(id)
+                if not older_feature.correspond(gfeature, self.ekf):
+                    id = -1
+            if id == -1:
+                i = self.ekf.add_point(cent)
+                gfeature.id = i
+
+                self.features_objects.append(gfeature)
+            # print("Visto do corpo: ", cent.T)
+            # center_inertial = apply_g_point(self.ekf.x_m, cent)
+            # ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+            # print("Rotacionado correto: ", ls.mainCylinders[x].center)
+            # print("Rotacionado pela fc g: ", center_inertial.T)
+            # zp = apply_h_point(self.ekf.x_m, center_inertial)
+            # print("DesRotacionado pela fc h: ", zp.T)
+            # gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
+            # scene_features.append(gfeature)
 
 
         ################### Associação de dados antiga
@@ -412,7 +435,7 @@ class GlobalScene:
 
         #         found_cuboid = True
 
-        # Map cleaning
+        #Map cleaning
         # if(i % 1 == 0):
         #     print("------------------------")
         #     print("TA FAZENDO MAP CLEANING")
@@ -467,7 +490,7 @@ class GlobalScene:
             #plt.show()
             #ax.plot(atual_loc[:, 0],atual_loc[:, 1],atual_loc[:, 2])
 
-        self.ekf.save_file(u_real)
+        self.ekf.save_file(u_real, u)
 
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)

@@ -193,6 +193,26 @@ class Cylinder:
         self.inliers = np.dot(self.inliers, rotMatrix.T) + translation
         self.normal = np.dot(rotMatrix, self.normal)
 
+    def append_cylinder(self, compare_feat, Z_new):
+        #print("Centro antes: "+str(self.center))
+        diff = np.asarray(self.center) - np.asarray([Z_new[0,0], Z_new[1,0], Z_new[2,0]])
+        self.center = [Z_new[0,0], Z_new[1,0], Z_new[2,0]]
+        #print("Centro depois: "+str(self.center))
+        self.inliers = self.inliers + diff # não sei se os pixeis tão alinhados
+
+        self.radius = (self.radius + compare_feat.feat.radius)/2
+
+        h_atual = (self.height[1]-self.height[0])
+        h_feat = (compare_feat.feat.height[1]-compare_feat.feat.height[0])
+        h_novo = (h_atual + h_feat)/2
+
+        self.height[1] = h_novo/2
+        self.height[0] = -h_novo/2
+
+        return True
+
+        #self.normal = np.dot(rotMatrix, self.normal)
+
 
     def get_geometry(self):
         R = get_rotationMatrix_from_vectors([0, 0, 1], self.normal)

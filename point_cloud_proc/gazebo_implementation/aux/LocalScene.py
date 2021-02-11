@@ -251,8 +251,10 @@ class LocalScene:
     def findSecundaryPlanes(self):
         removeIndexes = []
         for i_cyl in range(len(self.mainCylinders)):
+            print('ANALIZANDO CILINDRO COM RAIO: ', self.mainCylinders[i_cyl].radius)
             # if(self.mainCylinders[i_cyl].circulation_mean < self.circulation_cylinder):
             if(not self.is_cylinder(self.mainCylinders[i_cyl])):
+                removeIndexes.append(i_cyl)
                 outlier_cloud = copy.deepcopy(self.pointCloud_objects[i_cyl])
                 while(True):
                     # Ransac planar
@@ -269,7 +271,7 @@ class LocalScene:
                     if(valid):
                         p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
                         self.secundaryPlanes.append(p)
-                        removeIndexes.append(i_cyl)
+                        
                     if(np.asarray(outlier_cloud.points).shape[0] < 10):
                         break
                     if(self.filter_radius):

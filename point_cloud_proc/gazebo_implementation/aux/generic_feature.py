@@ -175,6 +175,8 @@ class Generic_feature:
 
 
     def correspond(self, compare_feat, ekf = ekf):
+        print(compare_feat.feat)
+        print(self.feat)
         if isinstance(self.feat,Plane):
             if isinstance(compare_feat.feat,Plane):
                 Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
@@ -190,6 +192,22 @@ class Generic_feature:
                     N = ekf.upload_plane(Z, self.id, only_test= False)
                     self.feat.append_plane(compare_feat, neweq)
                     self.running_geo["plane"] = self.running_geo["plane"]+1
+                    self.running_geo["total"] = self.running_geo["total"]+1
+                    return True
+                else:
+                    return False
+
+        if isinstance(self.feat,Cylinder):
+            if isinstance(compare_feat.feat,Cylinder):
+                Z = np.asarray([[compare_feat.feat.center[0]],[compare_feat.feat.center[1]],[compare_feat.feat.center[2]]])
+                C = apply_h_point(ekf.x_m, Z)
+                Z_new = ekf.upload_point(C, self.id, only_test= True)
+
+                cylinder_cobaia = copy.deepcopy(self.feat)
+                if(cylinder_cobaia.append_cylinder(compare_feat, Z_new)):
+                    Z_new_2 = ekf.upload_point(C, self.id, only_test= False)
+                    self.feat.append_cylinder(compare_feat, Z_new_2)
+                    self.running_geo["cylinder"] = self.running_geo["cylinder"]+1
                     self.running_geo["total"] = self.running_geo["total"]+1
                     return True
                 else:
