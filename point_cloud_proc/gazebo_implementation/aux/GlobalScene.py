@@ -177,16 +177,16 @@ class GlobalScene:
 
 
         # KALMAN FILTER --------------------------------------------
-        mu, sigma = 0, 0.2 # mean and standard deviation
+        mu, sigma = 0, 0.2/3 # mean and standard deviation
         noise_x = np.random.normal(mu, sigma, 1)
 
-        mu, sigma = 0, (1/3*np.pi/180) # mean and standard deviation
+        mu, sigma = 0, (0.5/3*np.pi/180) # mean and standard deviation
         noise_theta = np.random.normal(mu, sigma, 1)
 
         print('noise x: \n', noise_x)
         print('noise_theta: \n', noise_theta)
         u = duration*np.asarray([[vel_linear_body.T[0] + noise_x[0]],
-                                 [vel_angular_body.T[2] + 0*noise_theta[0]]])
+                                 [vel_angular_body.T[2] + noise_theta[0]]])
 
         print(u)
 
@@ -264,17 +264,25 @@ class GlobalScene:
                 # errorNormal = (np.abs((normal_feature[0]-normal_candidate[0]))+np.abs((normal_feature[1]-normal_candidate[1]))+np.abs((normal_feature[2]-normal_candidate[2])))
                 
                 # if not(errorNormal>0.3):
-                d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
-                if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
-                    area1 = older_feature.feat.width*older_feature.feat.height
-                    area2 = gfeature.feat.width*gfeature.feat.height
-                    if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
-                        if not older_feature.correspond(gfeature, self.ekf):
+
+                # If is ground
+                print("ID DO PLANO: ", self.getGroundPlaneId())
+                if(id == self.getGroundPlaneId()):
+                    pass
+                    #older_feature.correspond(gfeature, self.ekf)
+                else:
+
+                    d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
+                    if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
+                        area1 = older_feature.feat.width*older_feature.feat.height
+                        area2 = gfeature.feat.width*gfeature.feat.height
+                        if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
+                            if not older_feature.correspond(gfeature, self.ekf):
+                                id = -1
+                        else:
                             id = -1
                     else:
                         id = -1
-                else:
-                    id = -1
                 # else:
                 #     id = -1
             if id == -1:
@@ -480,7 +488,7 @@ class GlobalScene:
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=0):#126):
+        if(i >=60):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')
@@ -500,6 +508,15 @@ class GlobalScene:
 
         
         
+    def getGroundPlaneId(self):
+        modelGround = np.asarray([[0], [0], [1.2]])
+        for id in range(self.ekf.num_total_features['feature']):
+            if(self.ekf.type_feature_list[id] == self.ekf.types_feat['plane']):
+                # The first feature that are most similar with ground model is considered ground
+                print("Dist planos ground: ", np.linalg.norm(np.absolute(self.ekf.get_feature_from_id(id)) - np.abs(modelGround)))
+                print("Plano analizado: ", np.absolute(self.ekf.get_feature_from_id(id)))
+                if np.linalg.norm(np.absolute(self.ekf.get_feature_from_id(id)) - np.abs(modelGround)) < 0.5:
+                    return id
 
 
 

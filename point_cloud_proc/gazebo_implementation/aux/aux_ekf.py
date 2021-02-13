@@ -83,7 +83,7 @@ class ekf:
         self.x_m = np.vstack((self.x_m, N))
         # print("New Feature: ", N)
         # print("New x: ", self.x_m)
-        W = get_W_plane()
+        W = get_W_plane()*np.linalg.norm(Z)
         meio_bloco = np.block([[self.P_m,                                   np.zeros((self.P_m.shape[0], W.shape[1]))],
                                [np.zeros((W.shape[0], self.P_m.shape[1])),  W]])
         # print('meio_bloco: \n', meio_bloco)
@@ -120,11 +120,10 @@ class ekf:
         Hxp = get_Hxp_plane(self.x_m, Z)
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_plane()
-        W = get_W_plane()
+        W = get_W_plane()*np.linalg.norm(Z)
 
         S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
-        print("S: ")
-        print(S)
+
         if not np.linalg.cond(S) < 1/sys.float_info.epsilon:
             print("S é singular RETORNANDO VALOR SEM ATUALIZAÇÃO")
             print(S)
@@ -176,7 +175,7 @@ class ekf:
                     Hxp = get_Hxp_plane(self.x_m, Zp)
                     Hx = get_Hx(Hxv, Hxp, id, self.P_m)
                     Hw = get_Hw_plane()
-                    W = get_W_plane()
+                    W = get_W_plane()*np.linalg.norm(Zp)
 
                     S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
                     y = N - Zp
@@ -195,7 +194,7 @@ class ekf:
                     distances.append(99999)
             if distances:
                 idmin = min(enumerate(distances), key=itemgetter(1))[0] 
-                if(distances[idmin] > 100):
+                if(distances[idmin] > 20):
                     idmin = -1
             else:
                 idmin = -1
@@ -337,20 +336,21 @@ def get_Yz(Gx, Gz, P_m):
 
 def init_x_P():
 
-    P = np.eye(3, dtype=int)
-    P[0, 0] = 0
-    P[1, 1] = 0
-    P[2, 2] = 0
+    P = np.eye(3, dtype=float)
+    P[0, 0] = get_V()[0,0]
+    P[1, 1] = get_V()[0,0]
+    P[2, 2] = get_V()[1,1]
 
     x = np.zeros((3, 1))
     return x, P
 
 def get_V():
-    sigma_x = 0.2
-    sigma_psi = (0/3*np.pi/180)
+    sigma_x = 0.2/3
+    sigma_psi = (0.5/3*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])
+
     return V
 
 def apply_f(x, u):
@@ -509,9 +509,9 @@ def get_Gz_plane(x, Zp):
     return Gz
 
 def get_W_plane():
-    sigma_x = 0.2
-    sigma_y = 0.2
-    sigma_z = 0.2
+    sigma_x = 0.1/3
+    sigma_y = 0.1/3
+    sigma_z = 0.1/3
 
     W = np.asarray([[sigma_x**2, 0, 0],
                     [0, sigma_y**2, 0],
