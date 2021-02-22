@@ -69,6 +69,16 @@ class ekf:
 
 
     def add_plane(self, Z):
+        Z = Z.copy()
+        if np.argmax(np.abs(Z)) == 2:
+            print("chão")
+            # Z plane
+            Z[0] = 0.0001
+            Z[1] = 0.0001
+        else:
+            # XY Plane
+            Z[2] = 0.0001
+
         i_plano = self.num_total_features['feature'] # pega id do próximo plano
         self.num_total_features['feature'] = self.num_total_features['feature']+1 # soma contador de planos
         self.type_feature_list.append(self.types_feat['plane'])
@@ -116,11 +126,23 @@ class ekf:
 
 
     def upload_plane(self, Z, id, only_test=False):
+        Z = Z.copy()
+        if np.argmax(np.abs(Z)) == 2:
+            print("chão")
+            # Z plane
+            Z[0] = 0.0001
+            Z[1] = 0.0001
+        else:
+            # XY Plane
+            Z[2] = 0.0001
         Hxv = get_Hxv_plane(self.x_m, Z)
         Hxp = get_Hxp_plane(self.x_m, Z)
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_plane()
-        W = get_W_plane()*np.linalg.norm(Z)
+
+
+        #invz = np.asarray([[1/Z[0]], [1/Z[1]], [1/Z[2]]])
+        W = get_W_plane()#*modiff
 
         S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
 
@@ -130,6 +152,16 @@ class ekf:
             return self.x_m[(3+id*3):(3+(id+1)*3)]
 
         K = self.P_m @ Hx.T @ np.linalg.inv(S)
+        print("Kalman gain: ", K)
+        K[0, 1] = 0 
+        K[0, 2] = 0 
+        K[1, 0] = 0 
+        K[1, 2] = 0 
+        K[2, 2] = 0 
+        print("Kalman gain 2: ", K)
+
+        print("Feature nova: ", Z.T)
+        print("Feature antiga: ", apply_h_plane(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)]).T)
         v = Z - apply_h_plane(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)])
 
         if only_test:
@@ -137,8 +169,14 @@ class ekf:
             P_m_test = self.P_m - K @ Hx @ self.P_m
             return x_m_test[(3+id*3):(3+(id+1)*3)]
         else:
+            print("Atualizando plano: ", Z.T)
+            init = self.x_m[0:3].copy()
+            print("Posição inicial: ", init.T)
             self.x_m = self.x_m + K @ v
+            print("Posição final: ", self.x_m[0:3].T)
+            print("Movimento: ",(self.x_m[0:3] - init).T*100)
             self.P_m = self.P_m - K @ Hx @ self.P_m
+
             return self.x_m[(3+id*3):(3+(id+1)*3)]
 
 
@@ -187,7 +225,7 @@ class ekf:
                         return -1
                     d = y.T @ np.linalg.inv(S) @ y
                     d2 = distance.mahalanobis(N, Zp, np.linalg.inv(S))
-                    print("PLANO: Zp: ",Zp.T, " N: ",N.T, " d: ", d[0][0], " d2: ", d2)
+                    #print("PLANO: Zp: ",Zp.T, " N: ",N.T, " d: ", d[0][0], " d2: ", d2)
                     distances.append(np.sqrt(d[0][0]))
                 else:
                     # If the feature is from another type, we put a very high distance
@@ -216,7 +254,7 @@ class ekf:
                     y = np.square(y)
                     d = y.T @ np.linalg.inv(S) @ y
                     d2 = distance.mahalanobis(C, Zp, np.linalg.inv(S))
-                    print("CILINDRO: Zp: ",Zp.T, " N: ",C.T, " d: ", d[0][0], " d2: ", d2)
+                    #print("CILINDRO: Zp: ",Zp.T, " N: ",C.T, " d: ", d[0][0], " d2: ", d2)
                     distances.append(np.sqrt(d[0][0]))
                 else:
                     # If the feature is from another type, we put a very high distance
@@ -248,7 +286,7 @@ class ekf:
         #     #     id = -1
 
 
-        print("Associação: ",distances, " id menor: ",idmin)
+        #print("Associação: ",distances, " id menor: ",idmin)
         
         return idmin
 
@@ -300,6 +338,23 @@ class ekf:
         f.close()
 
 
+def get_array_compensation(angvecz):
+    modx = 99
+    mody = 99
+    modz = 99
+    try:
+        modx = 1/angvecz[0]
+    except ZeroDivisionError:
+        modx = 99
+    try:
+        mody = 1/angvecz[1]
+    except ZeroDivisionError:
+        mody = 99
+    try:
+        modz = 1/angvecz[2]
+    except ZeroDivisionError:
+        modz = 99
+    return modx, mody, modz
 
 
 def get_Hx(Hxv, Hxp, id, P_m):
@@ -346,7 +401,7 @@ def init_x_P():
 
 def get_V():
     sigma_x = 0.2/3
-    sigma_psi = (0.5/3*np.pi/180)
+    sigma_psi = (0.0/3*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])

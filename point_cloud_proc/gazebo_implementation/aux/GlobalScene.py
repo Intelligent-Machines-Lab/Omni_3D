@@ -186,7 +186,7 @@ class GlobalScene:
         print('noise x: \n', noise_x)
         print('noise_theta: \n', noise_theta)
         u = duration*np.asarray([[vel_linear_body.T[0] + noise_x[0]],
-                                 [vel_angular_body.T[2] + noise_theta[0]]])
+                                 [vel_angular_body.T[2] + 0*noise_theta[0]]])
 
         print(u)
 
@@ -268,8 +268,8 @@ class GlobalScene:
                 # If is ground
                 print("ID DO PLANO: ", self.getGroundPlaneId())
                 if(id == self.getGroundPlaneId()):
-                    pass
-                    #older_feature.correspond(gfeature, self.ekf)
+                    #pass
+                    older_feature.correspond(gfeature, self.ekf)
                 else:
 
                     d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
@@ -488,7 +488,7 @@ class GlobalScene:
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=60):#126):
+        if(i >=0):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')
@@ -513,9 +513,9 @@ class GlobalScene:
         for id in range(self.ekf.num_total_features['feature']):
             if(self.ekf.type_feature_list[id] == self.ekf.types_feat['plane']):
                 # The first feature that are most similar with ground model is considered ground
-                print("Dist planos ground: ", np.linalg.norm(np.absolute(self.ekf.get_feature_from_id(id)) - np.abs(modelGround)))
-                print("Plano analizado: ", np.absolute(self.ekf.get_feature_from_id(id)))
-                if np.linalg.norm(np.absolute(self.ekf.get_feature_from_id(id)) - np.abs(modelGround)) < 0.5:
+                #print("Dist planos ground: ", np.linalg.norm(np.absolute(self.ekf.get_feature_from_id(id)) - np.abs(modelGround)))
+                #print("Plano analizado: ", np.absolute(self.ekf.get_feature_from_id(id)))
+                if np.linalg.norm(np.absolute(self.ekf.get_feature_from_id(id)) - np.abs(modelGround)) < 0.8:
                     return id
 
 

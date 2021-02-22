@@ -108,6 +108,15 @@ class Plane:
             self.centroid = np.mean(self.inliers, axis=0)
 
         if(self.equation):
+            # # Simplificação em plano xy ou plano z
+            # print("eq: ", self.equation)
+            # vec_eq = [self.equation[0], self.equation[1], self.equation[2]]
+            # imin = vec_eq.index(min(vec_eq))
+            # vec_eq[imin] = 0
+            # vec_eq = vec_eq / np.linalg.norm(vec_eq)
+            # self.equation[0], self.equation[1], self.equation[2] = vec_eq[0], vec_eq[1], vec_eq[2]
+            # print("nova eeq: ", self.equation)
+
             centroid_pontos = np.mean(self.inliers, axis=0)
             center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(self.inliers)
             centroid_retangulo = np.mean(inliers_plano_desrotacionado, axis=0)
@@ -138,7 +147,7 @@ class Plane:
 
 
 
-        return best_eq, best_inliers, valid
+        return self.equation, best_inliers, valid
 
     def move(self, ekf):
         atual_loc = [ekf.x_m[0,0], ekf.x_m[1,0], 0]
@@ -258,7 +267,7 @@ class Plane:
             area2 = plano.feat.width*plano.feat.height
 
             self.equation = (np.asarray(eqplano1)*nvezes*area1 + np.asarray(eqplano2)*nvezes_plano2*area2)/((nvezes*area1+nvezes_plano2*area2))
-            print("JUNTANDO AS EQUAÇÃO TUDO: ",self.equation)
+            #print("JUNTANDO AS EQUAÇÃO TUDO: ",self.equation)
 
             # Muda os dois planos para essa orientação e posição:
             #self.points_main = aux.rodrigues_rot(self.points_main, [eqplano1[0], eqplano1[1], eqplano1[2]], [self.equation[0], self.equation[1], self.equation[2]])
@@ -276,10 +285,10 @@ class Plane:
         self.centroid = np.mean(self.points_main, axis=0)
         centroiddepois = self.centroid
 
-        print("DIFERENÇA DE CENTROIDES: ", np.linalg.norm(centroidantes-centroiddepois))
+        #print("DIFERENÇA DE CENTROIDES: ", np.linalg.norm(centroidantes-centroiddepois))
         discentnormal = np.dot((centroidantes-centroiddepois),np.asarray([self.equation[0], self.equation[1], self.equation[2]]))
         # O que me interessa mesmo aqui é mudança da centroide mas em direção a normal do plano. Não tem problema a centroide mudar na direção da superfície do plano
-        print("DIFERENÇA DE CENTROIDES na direção do plano: ",discentnormal)
+        #print("DIFERENÇA DE CENTROIDES na direção do plano: ",discentnormal)
         if(np.abs(discentnormal) > 0.8):
             self.color = (1, 0, 0)
             return False
