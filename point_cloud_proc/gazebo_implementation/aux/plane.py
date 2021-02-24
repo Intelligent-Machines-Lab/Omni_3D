@@ -220,22 +220,24 @@ class Plane:
         mesh_box = mesh_box.translate(np.asarray([0, 0, -self.equation[3]]))
         
 
-        #mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
+        mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
+        mesh_frame = mesh_frame.rotate(aux.get_rotationMatrix_from_vectors([0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]]), center=np.asarray([0, 0, 0]))
+        mesh_frame.translate(np.asarray(self.centroid))
         #o3d.visualization.draw_geometries([mesh_frame, mesh_box])
         mesh_box = mesh_box.rotate(aux.get_rotationMatrix_from_vectors([0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]]), center=np.asarray([0, 0, 0]))
 
-        #pcd = o3d.geometry.PointCloud()
-        #pcd.points = o3d.utility.Vector3dVector(inliers_plano_desrotacionado)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(self.points_main)
         # pcd.voxel_down_sample(voxel_size=0.1)
         #pcd.paint_uniform_color(self.color)
         #obb = pcd.get_oriented_bounding_box()
         #obb.color = (self.color[0], self.color[1], self.color[2])
         # estimate radius for rolling ball
         #o3d.visualization.draw_geometries([pcd, mesh_box])
-        return mesh_box
+        return [mesh_box, mesh_frame, pcd]
 
 
-    def append_plane(self, plano, neweq = [], nvezes=0):
+    def append_plane(self, plano, neweq = [], newcentroid=[], nvezes=0):
         #print("Shape antes de append: "+str(self.inliers.shape[0]))
         
         # #print("Shape depois de append: "+str(self.inliers.shape[0]))
@@ -246,8 +248,10 @@ class Plane:
 
         # dimin = np.amin([width, height])
         # if(np.linalg.norm(centroid_pontos-centroid_retangulo)<dimin*0.1):
-        usa_media = False
+        usa_media = True
         points = plano.feat.points_main
+        print("plano antigo: ", self.equation)
+        print("plano novo: ", plano.feat.equation)
         if(usa_media):
             eqplano2 = plano.feat.equation
             nvezes_plano2 = plano.running_geo["total"]
@@ -274,7 +278,16 @@ class Plane:
             #points = aux.rodrigues_rot(points, [eqplano2[0], eqplano2[1], eqplano2[2]], [self.equation[0], self.equation[1], self.equation[2]])
         else:
             self.equation = neweq
+
+        #print("plano médio: ", self.equation)
+        new_eqplane_zero = [-self.equation[0],-self.equation[1],-self.equation[2],0]
+        d = aux.distance_from_points_to_plane(newcentroid, new_eqplane_zero)[0][0]
+        new_equation = [self.equation[0],self.equation[1],self.equation[2],d]
+        self.equation = new_equation
+        #print("EQUATION: ", self.equation)
+
         provisorio = copy.deepcopy(np.append(self.points_main, points, axis=0))
+        #print('provisorio: ', str(provisorio))
         center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(provisorio)
         self.center2d = center_point
         self.rot_angle = rot_angle
@@ -303,6 +316,7 @@ class Plane:
         inlier_planez = points
 
         # Encontra representação 2d da projeção na normal do plano
+        #print("points: ", points)
         inliers_plano = aux.rodrigues_rot(copy.deepcopy(inlier_planez), [self.equation[0], self.equation[1], self.equation[2]], [0, 0, 1])- np.asarray([0, 0, -self.equation[3]])
         dd_plano = np.delete(inliers_plano, 2, 1)
 
@@ -313,7 +327,10 @@ class Plane:
 
         # Volta pro espaço 3D
         p = np.vstack((np.asarray(corner_points), np.asarray(center_point)))
+        #print("np.c_[ p, np.zeros(p.shape[0]) ]: ", np.c_[ p, np.zeros(p.shape[0]) ])
+        #print("np.asarray([0, 0, -self.equation[3]]): ", np.asarray([0, 0, -self.equation[3]]))
         ddd_plano= np.c_[ p, np.zeros(p.shape[0]) ] + np.asarray([0, 0, -self.equation[3]])
+        #print('ddd_plano: ',ddd_plano)
         inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
         return center_point, rot_angle, width, height, inliers_plano_desrotacionado
 

@@ -30,7 +30,7 @@ class ekf:
 
         self.num_total_features = {'feature':0}
 
-        self.types_feat = {'plane':1, 'point':2}
+        self.types_feat = {'plane':1, 'point':2, 'point_plane':3}
         self.type_feature_list = []
 
 
@@ -102,10 +102,10 @@ class ekf:
         return i_plano
 
 
-    def add_point(self, C):
+    def add_point(self, C, ftype="point"):
         i_plano = self.num_total_features['feature'] # pega id do próximo plano
         self.num_total_features['feature'] = self.num_total_features['feature']+1 # soma contador de planos
-        self.type_feature_list.append(self.types_feat['point'])
+        self.type_feature_list.append(self.types_feat[ftype])
 
         Gx = get_Gx_point(self.x_m, C)
         Gz = get_Gz_point(self.x_m, C)
@@ -201,14 +201,91 @@ class ekf:
             self.P_m = self.P_m - K @ Hx @ self.P_m
             return self.x_m[(3+id*3):(3+(id+1)*3)]
 
-    def calculate_mahalanobis(self, feature):
+    def calculate_mahalanobis(self, feature, lf= []):
+        # if isinstance(feature,aux.plane.Plane):
+        #     eq = feature.equation
+        #     N = eq[3]*np.asarray([[eq[0]],[eq[1]],[eq[2]]])
+        #     distances = []
+        #     for id in range(self.num_total_features['feature']):
+        #         if(self.type_feature_list[id] == self.types_feat['plane']):
+        #             Zp = apply_h_plane(self.x_m, self.get_feature_from_id(id))
+        #             Hxv = get_Hxv_plane(self.x_m, Zp)
+        #             Hxp = get_Hxp_plane(self.x_m, Zp)
+        #             Hx = get_Hx(Hxv, Hxp, id, self.P_m)
+        #             Hw = get_Hw_plane()
+        #             W = get_W_plane()*np.linalg.norm(Zp)
+
+        #             S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
+        #             y = N - Zp
+        #             y = np.square(y)
+
+        #             if not np.linalg.cond(S) < 1/sys.float_info.epsilon:
+        #                 print("S é singular Impedindo associação")
+        #                 print(S)
+        #                 return -1
+        #             d = y.T @ np.linalg.inv(S) @ y
+        #             d2 = distance.mahalanobis(N, Zp, np.linalg.inv(S))
+        #             #print("PLANO: Zp: ",Zp.T, " N: ",N.T, " d: ", d[0][0], " d2: ", d2)
+        #             distances.append(np.sqrt(d[0][0]))
+        #         else:
+        #             # If the feature is from another type, we put a very high distance
+        #             distances.append(99999)
+        #     if distances:
+        #         idmin = min(enumerate(distances), key=itemgetter(1))[0] 
+        #         if(distances[idmin] > 20):
+        #             idmin = -1
+        #     else:
+        #         idmin = -1
+
+            # # Novo
+            # eq = feature.equation
+            # #vec = eq[3]*np.asarray([[eq[0]],[eq[1]],[eq[2]]])
+            # distances = []
+            # for id in range(self.num_total_features['feature']):
+            #     if(self.type_feature_list[id] == self.types_feat['point_plane']):
+            #         Zp = apply_h_point(self.x_m, self.get_feature_from_id(id))
+
+            #         C = get_point_projection_on_a_plane(Zp, eq)
+
+            #         Hxv = get_Hxv_point(self.x_m, Zp)
+            #         Hxp = get_Hxp_point(self.x_m, Zp)
+            #         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
+            #         Hw = get_Hw_point()
+            #         W = get_W_point()
+
+            #         S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
+            #         y = C - Zp
+            #         y = np.square(y)
+            #         d = y.T @ np.linalg.inv(S) @ y
+            #         d2 = distance.mahalanobis(C, Zp, np.linalg.inv(S))
+            #         print("Plano: Zp: ",Zp.T, " Zp_proj: ",C.T, " d: ", d[0][0], " d2: ", d2)
+            #         distances.append(np.sqrt(d2))
+            #     else:
+            #         # If the feature is from another type, we put a very high distance
+            #         distances.append(99999)
+            # if distances:
+            #     idmin = min(enumerate(distances), key=itemgetter(1))[0]
+            #     # antes tava 16 
+            #     if(distances[idmin] > 1):
+            #         idmin = -1
+            # else:
+            #     idmin = -1
+        # Novo 2
         if isinstance(feature,aux.plane.Plane):
             eq = feature.equation
             N = eq[3]*np.asarray([[eq[0]],[eq[1]],[eq[2]]])
             distances = []
             for id in range(self.num_total_features['feature']):
-                if(self.type_feature_list[id] == self.types_feat['plane']):
-                    Zp = apply_h_plane(self.x_m, self.get_feature_from_id(id))
+
+                feat_teste = []
+                # Get feature from id
+                for i_global in lf:
+                    if id == i_global.id:
+                        feat_teste = i_global
+                eq_2 = feat_teste.feat.equation
+                N_2 = eq_2[3]*np.asarray([[eq_2[0]],[eq_2[1]],[eq_2[2]]])
+                if(self.type_feature_list[id] == self.types_feat['point_plane']):
+                    Zp = apply_h_plane(self.x_m, N_2)
                     Hxv = get_Hxv_plane(self.x_m, Zp)
                     Hxp = get_Hxp_plane(self.x_m, Zp)
                     Hx = get_Hx(Hxv, Hxp, id, self.P_m)
@@ -236,6 +313,7 @@ class ekf:
                     idmin = -1
             else:
                 idmin = -1
+
         elif(isinstance(feature,aux.cylinder.Cylinder)):
             centroid = feature.center
             C = np.asarray([[centroid[0]],[centroid[1]],[centroid[2]]])
@@ -289,6 +367,10 @@ class ekf:
         #print("Associação: ",distances, " id menor: ",idmin)
         
         return idmin
+
+    def overwrite_feature(self, id, feat):
+        #pass
+        self.x_m[(3+id*3):(3+(id+1)*3)] = feat
 
 
     def get_feature_from_id(self, id):

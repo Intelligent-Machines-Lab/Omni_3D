@@ -179,20 +179,52 @@ class Generic_feature:
         print(self.feat)
         if isinstance(self.feat,Plane):
             if isinstance(compare_feat.feat,Plane):
-                Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
-                Z = apply_h_plane(ekf.x_m, Z)
-                N = ekf.upload_plane(Z, self.id, only_test= True)
-                d = np.linalg.norm(N)
-                a = N[0,0]/d
-                b = N[1,0]/d
-                c = N[2,0]/d
-                neweq = [a, b, c, d]
+                # Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
+                # Z = apply_h_plane(ekf.x_m, Z)
+                # N = ekf.upload_plane(Z, self.id, only_test= True)
+                # d = np.linalg.norm(N)
+                # a = N[0,0]/d
+                # b = N[1,0]/d
+                # c = N[2,0]/d
+                # neweq = [a, b, c, d]
+                # plane_cobaia = copy.deepcopy(self.feat)
+                # if(plane_cobaia.append_plane(compare_feat, neweq)):
+                #     N = ekf.upload_plane(Z, self.id, only_test= False)
+                #     self.feat.append_plane(compare_feat, neweq)
+                #     self.running_geo["plane"] = self.running_geo["plane"]+1
+                #     self.running_geo["total"] = self.running_geo["total"]+1
+                #     return True
+                # else:
+                #     return False
+
+                # Z = np.asarray([[compare_feat.feat.centroid[0]],[compare_feat.feat.centroid[1]],[compare_feat.feat.centroid[2]]])
+                # C = apply_h_point(ekf.x_m, Z)
+                plane_frame_robo = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
+                plane_frame_robo = apply_h_plane(ekf.x_m, plane_frame_robo)
+                d = np.linalg.norm(plane_frame_robo)
+                a = plane_frame_robo[0,0]/d
+                b = plane_frame_robo[1,0]/d
+                c = plane_frame_robo[2,0]/d
+                plane_frame_robo = [a, b, c, d]
+
+                print('old map : ', np.asarray([self.feat.centroid]).T)
+                cent_moved = apply_h_point(ekf.x_m, np.asarray([self.feat.centroid]).T)
+                #print("cent_moved: ",[cent_moved[0,0],cent_moved[1,0],cent_moved[2,0]])
+                C = get_point_projection_on_a_plane([cent_moved[0,0],cent_moved[1,0],cent_moved[2,0]] , plane_frame_robo)
+                print('Zprojected: ', C.T)
+                Z_new = ekf.upload_point(C, self.id, only_test= True)
+                print('Z_new: ', Z_new.T)
+                print('Zold: ', cent_moved.T)
+
                 plane_cobaia = copy.deepcopy(self.feat)
-                if(plane_cobaia.append_plane(compare_feat, neweq)):
-                    N = ekf.upload_plane(Z, self.id, only_test= False)
-                    self.feat.append_plane(compare_feat, neweq)
+                if(plane_cobaia.append_plane(compare_feat, newcentroid=Z_new)):
+                    print("OLD CENTROID: ", ekf.get_feature_from_id(self.id))
+                    Z_new_2 = ekf.upload_point(C, self.id, only_test= False)
+                    self.feat.append_plane(compare_feat, newcentroid=Z_new_2)
                     self.running_geo["plane"] = self.running_geo["plane"]+1
                     self.running_geo["total"] = self.running_geo["total"]+1
+                    print("NEW CENTROID: ", np.asarray([self.feat.centroid]).T)
+                    ekf.overwrite_feature(self.id, np.asarray([self.feat.centroid]).T)
                     return True
                 else:
                     return False

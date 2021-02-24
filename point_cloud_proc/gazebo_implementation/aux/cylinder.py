@@ -222,7 +222,7 @@ class Cylinder:
         mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
         #print("Centro depois2: "+str(self.center))
         mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
-        return mesh_cylinder
+        return [mesh_cylinder]
 
 
 

@@ -247,49 +247,62 @@ class GlobalScene:
         planes_list.extend(ls.mainPlanes.copy())
         planes_list.extend(ls.secundaryPlanes.copy())
         
+        # for x in range(len(planes_list)):
+        #     id = self.ekf.calculate_mahalanobis(planes_list[x])
+        #     z_medido = planes_list[x].equation[3]*np.asarray([[planes_list[x].equation[0]], [planes_list[x].equation[1]], [planes_list[x].equation[2]]])
+        #     #id = -1
+        #     planes_list[x].move(self.ekf)
+        #     gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
+        #     if(not id == -1):
+        #         older_feature = self.get_feature_from_id(id)
+        #         # normal_feature = np.asarray([older_feature.feat.equation[0], older_feature.feat.equation[1], older_feature.feat.equation[2]])
+        #         # normal_candidate = np.asarray([gfeature.feat.equation[0], gfeature.feat.equation[1], gfeature.feat.equation[2]])
+        #         # # Align normals
+        #         # bigger_axis = np.argmax(np.abs(normal_feature))
+        #         # if not (np.sign(normal_feature[bigger_axis]) == np.sign(normal_candidate[bigger_axis])):
+        #         #     normal_candidate = -normal_candidate
+        #         # errorNormal = (np.abs((normal_feature[0]-normal_candidate[0]))+np.abs((normal_feature[1]-normal_candidate[1]))+np.abs((normal_feature[2]-normal_candidate[2])))
+                
+        #         # if not(errorNormal>0.3):
+
+        #         # If is ground
+        #         print("ID DO PLANO: ", self.getGroundPlaneId())
+        #         if(id == self.getGroundPlaneId()):
+        #             #pass
+        #             older_feature.correspond(gfeature, self.ekf)
+        #         else:
+
+        #             d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
+        #             if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
+        #                 area1 = older_feature.feat.width*older_feature.feat.height
+        #                 area2 = gfeature.feat.width*gfeature.feat.height
+        #                 if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
+        #                     if not older_feature.correspond(gfeature, self.ekf):
+        #                         id = -1
+        #                 else:
+        #                     id = -1
+        #             else:
+        #                 id = -1
+        #         # else:
+        #         #     id = -1
+        #     if id == -1:
+        #         i = self.ekf.add_plane(z_medido)
+        #         gfeature.id = i
+        #         self.features_objects.append(gfeature)
         for x in range(len(planes_list)):
-            id = self.ekf.calculate_mahalanobis(planes_list[x])
-            z_medido = planes_list[x].equation[3]*np.asarray([[planes_list[x].equation[0]], [planes_list[x].equation[1]], [planes_list[x].equation[2]]])
-            #id = -1
+            cent = np.asarray([planes_list[x].centroid]).T
+            id = self.ekf.calculate_mahalanobis(planes_list[x], lf=self.features_objects)
+            print("best id: ",id)
             planes_list[x].move(self.ekf)
             gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
-            if(not id == -1):
+            if not id == -1:
                 older_feature = self.get_feature_from_id(id)
-                # normal_feature = np.asarray([older_feature.feat.equation[0], older_feature.feat.equation[1], older_feature.feat.equation[2]])
-                # normal_candidate = np.asarray([gfeature.feat.equation[0], gfeature.feat.equation[1], gfeature.feat.equation[2]])
-                # # Align normals
-                # bigger_axis = np.argmax(np.abs(normal_feature))
-                # if not (np.sign(normal_feature[bigger_axis]) == np.sign(normal_candidate[bigger_axis])):
-                #     normal_candidate = -normal_candidate
-                # errorNormal = (np.abs((normal_feature[0]-normal_candidate[0]))+np.abs((normal_feature[1]-normal_candidate[1]))+np.abs((normal_feature[2]-normal_candidate[2])))
-                
-                # if not(errorNormal>0.3):
-
-                # If is ground
-                print("ID DO PLANO: ", self.getGroundPlaneId())
-                if(id == self.getGroundPlaneId()):
-                    #pass
-                    older_feature.correspond(gfeature, self.ekf)
-                else:
-
-                    d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
-                    if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
-                        area1 = older_feature.feat.width*older_feature.feat.height
-                        area2 = gfeature.feat.width*gfeature.feat.height
-                        if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
-                            if not older_feature.correspond(gfeature, self.ekf):
-                                id = -1
-                        else:
-                            id = -1
-                    else:
-                        id = -1
-                # else:
-                #     id = -1
+                if not older_feature.correspond(gfeature, self.ekf):
+                    id = -1
             if id == -1:
-                i = self.ekf.add_plane(z_medido)
+                i = self.ekf.add_point(cent, ftype="point_plane")
                 gfeature.id = i
                 self.features_objects.append(gfeature)
-
 
 
         for x in range(len(ls.mainCylinders)):
@@ -483,7 +496,8 @@ class GlobalScene:
         #self.fet_geo = []
         for ob in self.features_objects:
             if(ob.running_geo["total"] >= 0):
-                self.fet_geo.append(ob.feat.get_geometry())
+                #print([ob.feat.get_geometry()])
+                self.fet_geo.extend(ob.feat.get_geometry())
 
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 

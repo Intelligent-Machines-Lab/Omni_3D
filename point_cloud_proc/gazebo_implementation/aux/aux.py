@@ -12,6 +12,18 @@ def drawPlane(plane):
     return box
 
 
+def get_point_projection_on_a_plane(point, plane_eq):
+    # Calculate projection of the old centroid in the new plane
+    # Distance from old centroid to new plane
+    Zp = point
+    eq = plane_eq
+    dist_pt = -(eq[0]*Zp[0]+eq[1]*Zp[1]+eq[2]*Zp[2]+eq[3])/np.sqrt(eq[0]**2+eq[1]**2+eq[2]**2)
+    print("distpt: ", dist_pt)
+    # Projected point
+    C = np.asarray([[Zp[0]+dist_pt*eq[0]],[Zp[1]+dist_pt*eq[1]],[Zp[2]+dist_pt*eq[2]]])
+    return C
+
+
 def get_rotationMatrix_from_vectors(u, v):
     # Lets find a vector which is ortogonal to both u and v
     w = np.cross(u, v)
@@ -37,6 +49,9 @@ def get_rotationMatrix_from_vectors(u, v):
 
 
 def rodrigues_rot(P, n0, n1):
+    #print("P: ", P)
+    #print("n0: ", n0)
+    #print("n1: ", n1)
     
     # If P is only 1d array (coords of single point), fix it to be matrix
     P = np.asarray(P)
@@ -56,6 +71,7 @@ def rodrigues_rot(P, n0, n1):
         # Compute rotated points
        
         for i in range(len(P)):
+            #print('P[i]: ', P[i])
             P_rot[i] = P[i]*np.cos(theta) + np.cross(k,P[i])*np.sin(theta) + k*np.dot(k,P[i])*(1-np.cos(theta))
     else:
         P_rot = P
