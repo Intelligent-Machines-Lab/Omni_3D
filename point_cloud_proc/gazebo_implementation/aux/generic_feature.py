@@ -179,23 +179,22 @@ class Generic_feature:
         print(self.feat)
         if isinstance(self.feat,Plane):
             if isinstance(compare_feat.feat,Plane):
-                Z = compare_feat.feat.equation[3]*np.asarray([[compare_feat.feat.equation[0]],[compare_feat.feat.equation[1]],[compare_feat.feat.equation[2]]])
+                Z = np.asarray([[compare_feat.feat.equation[0],compare_feat.feat.equation[1],compare_feat.feat.equation[2],compare_feat.feat.equation[3]]]).T
                 Z = apply_h_plane(ekf.x_m, Z)
-                N = ekf.upload_plane(Z, self.id, only_test= True)
-                d = np.linalg.norm(N)
-                a = N[0,0]/d
-                b = N[1,0]/d
-                c = N[2,0]/d
-                neweq = [a, b, c, d]
-                plane_cobaia = copy.deepcopy(self.feat)
-                if(plane_cobaia.append_plane(compare_feat, neweq)):
-                    N = ekf.upload_plane(Z, self.id, only_test= False)
-                    self.feat.append_plane(compare_feat, neweq)
-                    self.running_geo["plane"] = self.running_geo["plane"]+1
-                    self.running_geo["total"] = self.running_geo["total"]+1
-                    return True
-                else:
-                    return False
+                N = ekf.upload_plane(Z, self.id, only_test= False)
+                self.feat.append_plane(compare_feat, copy.deepcopy([N[0,0], N[1,0], N[2,0], N[3,0]]))
+                return True
+                # neweq = [N[0,0], N[1,0], N[2,0], N[3,0]]
+
+                # plane_cobaia = copy.deepcopy(self.feat)
+                # if(plane_cobaia.append_plane(compare_feat, neweq)):
+                #     N = ekf.upload_plane(Z, self.id, only_test= False)
+                #     self.feat.append_plane(compare_feat, neweq)
+                #     self.running_geo["plane"] = self.running_geo["plane"]+1
+                #     self.running_geo["total"] = self.running_geo["total"]+1
+                #     return True
+                # else:
+                #     return False
 
         if isinstance(self.feat,Cylinder):
             if isinstance(compare_feat.feat,Cylinder):

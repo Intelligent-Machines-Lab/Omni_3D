@@ -71,9 +71,12 @@ class LocalScene:
         while(True):
             # Ransac planar
             points = np.asarray(outlier_cloud.points)
+            if points.shape[0] < 4:
+                break
             
             p = Plane()
-            best_eq, best_inliers, valid = p.findPlane(points, thresh=0.1, minPoints=100, maxIteration=400)
+            best_eq, best_inliers, valid = p.findPlane(points, thresh=0.1, minPoints=3, maxIteration=1000)
+            inlier_cloud_list.append(copy.deepcopy(outlier_cloud).select_by_index(best_inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
             qtn_inliers = best_inliers.shape[0]
             if(qtn_inliers < int(0.15*self.npontos)):
                 break
@@ -83,6 +86,7 @@ class LocalScene:
                 break
             outlier_cloud = outlier_cloud.select_by_index(best_inliers, invert=True)
             if(valid):
+
                 p.color = [random.uniform(0.3, 1), random.uniform(0.3, 1), random.uniform(0.3, 1)]
                 self.mainPlanes.append(p)
             if(self.filter_radius):
@@ -90,6 +94,7 @@ class LocalScene:
                 cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.0012*self.npontos), radius=0.2)
                 #display_inlier_outlier(outlier_cloud, ind)
                 outlier_cloud = outlier_cloud.select_by_index(ind)
+        #o3d.visualization.draw_geometries(inlier_cloud_list)
         self.pointCloud_notMainPlanes = outlier_cloud
 
 
@@ -122,7 +127,7 @@ class LocalScene:
 
 
 
-    def defineGroundNormal(self, ground_eq_reserva = [0, 0, 1, -1.2]):
+    def defineGroundNormal(self, ground_eq_reserva = [0, 0, -1, 1.2]):
         normalCandidatesY = []
         for i in range(len(self.mainPlanes)):
             normalCandidatesY.append(abs(self.mainPlanes[i].equation[2]))

@@ -27,6 +27,9 @@ def data_for_cylinder_along_z(center_x,center_y,radius,height_z):
     y_grid = radius*np.sin(theta_grid) + center_y
     return x_grid,y_grid,z_grid
 
+
+
+
 def threaded_function(ekflist, prop):
     x_p_list_total = ekflist['x_p_list']
     P_p_list_total = ekflist['P_p_list']
@@ -288,6 +291,33 @@ def threaded_function(ekflist, prop):
     ax6.plot(totap, label='Incerteza')
     ax6.legend(loc="upper right")
     ax6.grid()
+
+    class EventHandler:
+        def __init__(self):
+            fig.canvas.mpl_connect('button_press_event', self.onpress)
+
+        def onpress(self, event):
+            if event.inaxes!=ax8:
+                return
+            xi, yi = (int(round(n)) for n in (event.xdata, event.ydata))
+            print(xi,yi)
+            x_list = []
+            y_list = []
+            for n_pmat in range(len(P_p_list_total)):
+                try:
+                    y_list.append(3*np.sqrt(P_p_list_total[n_pmat][xi,xi]))
+                    x_list.append(n_pmat)
+                    print(x_list)
+                    print(y_list)
+                except:
+                    print("não tem")
+            ax6.plot(x_list, y_list, label='3xstd v '+str(n_pmat))
+            ax6.grid(True)
+            plt.show()
+                #print(n_pmat,"   :::    ", P_p_list_total[n_pmat])
+
+
+    handler = EventHandler()
 
 
     plt.show()

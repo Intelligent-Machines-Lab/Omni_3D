@@ -33,7 +33,7 @@ class GlobalScene:
         self.fet_geo = []
 
         self.ground_normal = []
-        self.ground_equation = [0, 0, 1, -1.2]
+        self.ground_equation = [0, 0, -1, 1.2]
         self.lc_atual = []
         self.propwindow = []
 
@@ -177,16 +177,16 @@ class GlobalScene:
 
 
         # KALMAN FILTER --------------------------------------------
-        mu, sigma = 0, 0.2/3 # mean and standard deviation
+        mu, sigma = 0, 0.5/3 # mean and standard deviation
         noise_x = np.random.normal(mu, sigma, 1)
 
-        mu, sigma = 0, (0.5/3*np.pi/180) # mean and standard deviation
+        mu, sigma = 0, (0/3)*np.pi/180 # mean and standard deviation
         noise_theta = np.random.normal(mu, sigma, 1)
 
         print('noise x: \n', noise_x)
         print('noise_theta: \n', noise_theta)
         u = duration*np.asarray([[vel_linear_body.T[0] + noise_x[0]],
-                                 [vel_angular_body.T[2] + 0*noise_theta[0]]])
+                                 [vel_angular_body.T[2] + noise_theta[0]]])
 
         print(u)
 
@@ -241,20 +241,55 @@ class GlobalScene:
         #print("GND EQUATION: ", self.ground_equation)
 
 
+
+
+        
+
         scene_features=[]
 
         planes_list = []
         planes_list.extend(ls.mainPlanes.copy())
         planes_list.extend(ls.secundaryPlanes.copy())
-        
+
+        mundinho = []
+        print('mundinho: ', mundinho)
+        plane_list2 = copy.deepcopy(planes_list)
+        for x in range(len(plane_list2)):
+            plane_list2[x].move(self.ekf)
+            mundinho.extend(plane_list2[x].get_geometry())
+        #o3d.visualization.draw_geometries(mundinho)    
+
+
+        oldstate = copy.deepcopy(self.ekf)
         for x in range(len(planes_list)):
+            mundinho = []
+            mundinho.extend(self.fet_geo)
             id = self.ekf.calculate_mahalanobis(planes_list[x])
-            z_medido = planes_list[x].equation[3]*np.asarray([[planes_list[x].equation[0]], [planes_list[x].equation[1]], [planes_list[x].equation[2]]])
             #id = -1
+            z_medido = np.asarray([[planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2], planes_list[x].equation[3]]]).T
+            normal_feature = np.asarray([planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2]])
+            bigger_axis = np.argmax(np.abs(normal_feature))
+            if bigger_axis == 2:
+                continue
+
             planes_list[x].move(self.ekf)
             gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
             if(not id == -1):
                 older_feature = self.get_feature_from_id(id)
+                if not older_feature.correspond(gfeature, self.ekf):
+                    id = -1
+                else:
+                    measured_plane = copy.deepcopy(gfeature)
+                    measured_plane.feat.color = [1, 0, 0]
+                    older_feature2 = copy.deepcopy(older_feature)
+                    older_feature2.feat.color = [0, 1, 0]
+                    mundinho.extend(measured_plane.feat.get_geometry())
+                    mundinho.extend(older_feature2.feat.get_geometry())
+                    #o3d.visualization.draw_geometries(mundinho) 
+                    
+
+
+
                 # normal_feature = np.asarray([older_feature.feat.equation[0], older_feature.feat.equation[1], older_feature.feat.equation[2]])
                 # normal_candidate = np.asarray([gfeature.feat.equation[0], gfeature.feat.equation[1], gfeature.feat.equation[2]])
                 # # Align normals
@@ -266,25 +301,25 @@ class GlobalScene:
                 # if not(errorNormal>0.3):
 
                 # If is ground
-                print("ID DO PLANO: ", self.getGroundPlaneId())
-                if(id == self.getGroundPlaneId()):
-                    #pass
-                    older_feature.correspond(gfeature, self.ekf)
-                else:
+# print("ID DO PLANO: ", self.getGroundPlaneId())
+# if(id == self.getGroundPlaneId()):
+#     #pass
+#     older_feature.correspond(gfeature, self.ekf)
+# else:
 
-                    d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
-                    if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
-                        area1 = older_feature.feat.width*older_feature.feat.height
-                        area2 = gfeature.feat.width*gfeature.feat.height
-                        if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
-                            if not older_feature.correspond(gfeature, self.ekf):
-                                id = -1
-                        else:
-                            id = -1
-                    else:
-                        id = -1
-                # else:
-                #     id = -1
+#     d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
+#     if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
+#         area1 = older_feature.feat.width*older_feature.feat.height
+#         area2 = gfeature.feat.width*gfeature.feat.height
+#         if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
+#             if not older_feature.correspond(gfeature, self.ekf):
+#                 id = -1
+#         else:
+#             id = -1
+#     else:
+#         id = -1
+# # else:
+# #     id = -1
             if id == -1:
                 i = self.ekf.add_plane(z_medido)
                 gfeature.id = i
@@ -292,24 +327,31 @@ class GlobalScene:
 
 
 
-        for x in range(len(ls.mainCylinders)):
-            #i = self.ekf.add_plane(z_medido)
-            #gfeature.id = i
-            #self.features_objects.append(gfeature)
+        # for x in range(len(ls.mainCylinders)):
+        #     #i = self.ekf.add_plane(z_medido)
+        #     #gfeature.id = i
+        #     #self.features_objects.append(gfeature)
 
-            cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
-            id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
-            ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
-            if not id == -1:
-                older_feature = self.get_feature_from_id(id)
-                if not older_feature.correspond(gfeature, self.ekf):
-                    id = -1
-            if id == -1:
-                i = self.ekf.add_point(cent)
-                gfeature.id = i
+        #     cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
+        #     id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
+        #     ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+        #     gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
+        #     if not id == -1:
+        #         older_feature = self.get_feature_from_id(id)
+        #         if not older_feature.correspond(gfeature, self.ekf):
+        #             id = -1
+        #     if id == -1:
+        #         i = self.ekf.add_point(cent)
+        #         gfeature.id = i
 
-                self.features_objects.append(gfeature)
+        #         self.features_objects.append(gfeature)
+
+
+
+
+
+
+
             # print("Visto do corpo: ", cent.T)
             # center_inertial = apply_g_point(self.ekf.x_m, cent)
             # ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
@@ -483,12 +525,13 @@ class GlobalScene:
         #self.fet_geo = []
         for ob in self.features_objects:
             if(ob.running_geo["total"] >= 0):
-                self.fet_geo.append(ob.feat.get_geometry())
+                print("EQUACAO FINAL: ", ob.feat.equation)
+                self.fet_geo.extend(ob.feat.get_geometry())
 
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=0):#126):
+        if(i >=200):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')

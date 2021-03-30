@@ -18,7 +18,7 @@ class Plane:
         self.centroid = []
 
 
-    def findPlane(self, pts, thresh=0.05, minPoints=100, maxIteration=1000):
+    def findPlane(self, pts, thresh=0.05, minPoints=3, maxIteration=1000):
         n_points = pts.shape[0]
         self.nPoints = n_points
         #print(n_points)
@@ -26,55 +26,17 @@ class Plane:
         best_inliers = []
         valid = False
 
-        for it in range(maxIteration):
-            # Samples 3 random points 
-            id_samples = random.sample(range(1, n_points-1), 3)
-            #print(id_samples)
-            pt_samples = pts[id_samples]
-            #print(pt_samples)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pts)
 
-            # We have to find the plane equation described by those 3 points
-            # We find first 2 vectors that are part of this plane
-            # A = pt2 - pt1
-            # B = pt3 - pt1
+        plane_model, inliers = pcd.segment_plane(distance_threshold=thresh,ransac_n=3,num_iterations=maxIteration)
+        [a, b, c, d] = plane_model
+        best_eq = [a, b, c, d]
+        print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
 
-            vecA = pt_samples[1,:] - pt_samples[0,:]
-            vecB = pt_samples[2,:] - pt_samples[0,:]
-
-            #print(vecA)
-            #print(vecB)
-
-            # Now we compute the cross product of vecA and vecB to get vecC which is normal to the plane
-            vecC = np.cross(vecA, vecB)
-            
-
-            # The plane equation will be vecC[0]*x + vecC[1]*y + vecC[0]*z = -k
-            # We have to use a point to find k
-            vecC = vecC / np.linalg.norm(vecC)
-            k = -np.sum(np.multiply(vecC, pt_samples[1,:]))
-            plane_eq = [vecC[0], vecC[1], vecC[2], k]
-            # N = k*vecC
-            # da = np.linalg.norm(N)
-            # aa = N[0]/da
-            # ba = N[1]/da
-            # ca = N[2]/da
-            # plane_eq = [aa, ba, ca, da]
-            
-            #print(plane_eq)
-
-            # Distance from a point to a plane 
-            # https://mathworld.wolfram.com/Point-PlaneDistance.html
-            pt_id_inliers = [] # list of inliers ids
-            dist_pt = (plane_eq[0]*pts[:,0]+plane_eq[1]*pts[:, 1]+plane_eq[2]*pts[:, 2]+plane_eq[3])/np.sqrt(plane_eq[0]**2+plane_eq[1]**2+plane_eq[2]**2)
-            
-            # Select indexes where distance is biggers than the threshold
-            pt_id_inliers = np.where(np.abs(dist_pt) <= thresh)[0]
-            if(len(pt_id_inliers) > len(best_inliers)):
-                best_eq = plane_eq
-                best_inliers = pt_id_inliers
-        self.inliers = pts[best_inliers]
-        self.inliersId = best_inliers
-        self.equation = best_eq
+        self.inliers = np.asarray(pts[inliers])
+        self.inliersId = np.asarray(inliers)
+        self.equation = [a, b, c, d]
         self.centroid = np.mean(self.inliers, axis=0)
 
         #print("Plano tem esse número de pontos como inliers: ", self.inliers.shape[0])
@@ -97,9 +59,11 @@ class Plane:
 
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(self.inliers)
+            #o3d.visualization.draw_geometries([pcd])
             pcd = pcd.voxel_down_sample(voxel_size=0.1)
             cl, ind = pcd.remove_statistical_outlier(nb_neighbors=50, std_ratio=0.1)
             pcd = pcd.select_by_index(ind)
+            #o3d.visualization.draw_geometries([pcd])
             #aux.display_inlier_outlier(pcd, ind)
             #aux.display_inlier_outlier(pcd, ind)
             self.inliers = np.asarray(pcd.points)
@@ -108,6 +72,14 @@ class Plane:
             self.centroid = np.mean(self.inliers, axis=0)
 
         if(self.equation):
+            print("Antes de negativar: ", self.equation)
+            if self.equation[3] < 0:
+                print("Negativou")
+                self.equation[0] = -self.equation[0]
+                self.equation[1] = -self.equation[1]
+                self.equation[2] = -self.equation[2]
+                self.equation[3] = -self.equation[3]
+            print("Depois de negativar: ", self.equation)
             # # Simplificação em plano xy ou plano z
             # print("eq: ", self.equation)
             # vec_eq = [self.equation[0], self.equation[1], self.equation[2]]
@@ -145,11 +117,12 @@ class Plane:
                 #print("PLANO INVÁLIDO")
                 valid = False
 
-
-
-        return self.equation, best_inliers, valid
+        if valid:
+            print("Saiu do plano: ", self.equation)
+        return self.equation, self.inliersId, valid
 
     def move(self, ekf):
+        ekf = copy.deepcopy(ekf)
         atual_loc = [ekf.x_m[0,0], ekf.x_m[1,0], 0]
         atual_angulo = [0, 0, ekf.x_m[2,0]]
         rotMatrix = aux.get_rotation_matrix_bti(atual_angulo)
@@ -157,41 +130,60 @@ class Plane:
 
 
         # inlin = np.dot(self.inliers, rotMatrix.T) + tranlation
+        # pmain = np.dot(self.points_main, rotMatrix.T) + tranlation
         # cent = np.mean(inlin, axis=0)
         # vec = np.dot(rotMatrix, [self.equation[0], self.equation[1], self.equation[2]])
         # d = -np.sum(np.multiply(vec, cent))
+        # eqcerta = [vec[0], vec[1],vec[2], d]
+        # print("EQUAÇÃO CERTAAAAAAA:   ", eqcerta)
         # uv = d*np.asarray([[vec[0]], [vec[1]],[vec[2]]])
 
+
+        for point in self.points_main:
+            print("USANDO G: ",a_ekf.apply_g_point(ekf.x_m, np.asarray([point]).T).T)
+
+
+
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
-        self.points_main = np.dot(self.points_main, rotMatrix.T) + tranlation
+
+        
+        self.points_main = np.dot(self.points_main, rotMatrix.T)
+        #print('points_main antes: ', self.points_main)
+        self.points_main = self.points_main + tranlation
+        print('points_main depois: ', self.points_main)
         
         self.centroid = np.mean(self.inliers, axis=0)
-        #d = self.equation[3] + np.dot(vec, tranlation)
-        Z = self.equation[3]*np.asarray([[self.equation[0]],[self.equation[1]],[self.equation[2]]])
+
+        Z = np.asarray([[self.equation[0]],[self.equation[1]],[self.equation[2]], [self.equation[3]]])
+
         N = a_ekf.apply_g_plane(ekf.x_m, Z)
+        # Z2 = a_ekf.apply_h_plane(ekf.x_m, N)
+
+        # N2 = a_ekf.apply_g_plane(ekf.x_m, Z2)
+        # Z3 = a_ekf.apply_h_plane(ekf.x_m, N2)
+
+        # print("Z1: ", Z.T)
+        # print("Z2: ", Z2.T)
+        # print("Z3: ", Z3.T)
 
 
-        # print("Nd: ",N)
-        # print("Nc:", uv)
+        print("USANDO GGGGGGGG: ", N.T)
 
+        self.equation = [N[0,0], N[1,0], N[2,0], N[3,0]]#[eqcerta[0],eqcerta[1],eqcerta[2],eqcerta[3]] # #
+        # if self.equation[3] < 0:
+        #     self.equation[0] = self.equation[0]*-1
+        #     self.equation[1] = self.equation[1]*-1
+        #     self.equation[2] = self.equation[2]*-1
+        #     self.equation[3] = self.equation[3]*-1
+        print("EQUAÇÃO USAAAAAADAAAAA:   ", self.equation)
 
-
-        d = np.linalg.norm(N)
-        a = N[0,0]/d
-        b = N[1,0]/d
-        c = N[2,0]/d
-        self.equation = [a, b, c, d]
         center_point, rot_angle, width, height, inliers_plano_desrotacionado = self.update_geometry(self.points_main)
         self.center2d = center_point
         self.rot_angle = rot_angle
         self.width = width
         self.height = height
-        self.points_main = inliers_plano_desrotacionado
+        #self.points_main = inliers_plano_desrotacionado
         self.centroid = np.mean(self.points_main, axis=0)
-
-        
-
-
 
 
     def getProrieties(self):
@@ -232,7 +224,10 @@ class Plane:
         #obb.color = (self.color[0], self.color[1], self.color[2])
         # estimate radius for rolling ball
         #o3d.visualization.draw_geometries([pcd, mesh_box])
-        return mesh_box
+
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(self.points_main)
+        return [mesh_box, pcd]
 
 
     def append_plane(self, plano, neweq = [], nvezes=0):
@@ -246,16 +241,14 @@ class Plane:
 
         # dimin = np.amin([width, height])
         # if(np.linalg.norm(centroid_pontos-centroid_retangulo)<dimin*0.1):
+        plano = copy.deepcopy(plano)
+        neweq = copy.deepcopy(neweq)
         usa_media = False
         points = plano.feat.points_main
         if(usa_media):
             eqplano2 = plano.feat.equation
             nvezes_plano2 = plano.running_geo["total"]
-            eqplano1 = self.equation
-
-            # Deixa normal do plano no mesmo sentido:
-            if not (np.sign(eqplano2[3]) == np.sign(eqplano1[3])):
-                eqplano2 = -np.asarray(eqplano2)
+            eqplano1 = copy.deepcopy(self.equation)
 
 
             # nova equação do plano:
