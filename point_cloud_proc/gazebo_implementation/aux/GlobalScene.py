@@ -177,16 +177,16 @@ class GlobalScene:
 
 
         # KALMAN FILTER --------------------------------------------
-        mu, sigma = 0, 0.2/3 # mean and standard deviation
+        mu, sigma = 0, 0.05/3 # mean and standard deviation
         noise_x = np.random.normal(mu, sigma, 1)
 
-        mu, sigma = 0, (0.5/3*np.pi/180) # mean and standard deviation
+        mu, sigma = 0, (2/3*np.pi/180) # mean and standard deviation
         noise_theta = np.random.normal(mu, sigma, 1)
 
         print('noise x: \n', noise_x)
         print('noise_theta: \n', noise_theta)
         u = duration*np.asarray([[vel_linear_body.T[0] + noise_x[0]],
-                                 [vel_angular_body.T[2] + 0*noise_theta[0]]])
+                                 [vel_angular_body.T[2] + noise_theta[0]]])
 
         print(u)
 
@@ -292,24 +292,24 @@ class GlobalScene:
 
 
 
-        for x in range(len(ls.mainCylinders)):
-            #i = self.ekf.add_plane(z_medido)
-            #gfeature.id = i
-            #self.features_objects.append(gfeature)
+        # for x in range(len(ls.mainCylinders)):
+        #     #i = self.ekf.add_plane(z_medido)
+        #     #gfeature.id = i
+        #     #self.features_objects.append(gfeature)
 
-            cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
-            id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
-            ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
-            if not id == -1:
-                older_feature = self.get_feature_from_id(id)
-                if not older_feature.correspond(gfeature, self.ekf):
-                    id = -1
-            if id == -1:
-                i = self.ekf.add_point(cent)
-                gfeature.id = i
+        #     cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
+        #     id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
+        #     ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+        #     gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
+        #     if not id == -1:
+        #         older_feature = self.get_feature_from_id(id)
+        #         if not older_feature.correspond(gfeature, self.ekf):
+        #             id = -1
+        #     if id == -1:
+        #         i = self.ekf.add_point(cent)
+        #         gfeature.id = i
 
-                self.features_objects.append(gfeature)
+        #         self.features_objects.append(gfeature)
             # print("Visto do corpo: ", cent.T)
             # center_inertial = apply_g_point(self.ekf.x_m, cent)
             # ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)

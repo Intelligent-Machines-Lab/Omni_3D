@@ -21,9 +21,9 @@ import _thread
 
 #nomepasta = "gazebo_dataset_circular_planes"
 #nomepasta = "gazebo_dataset_circular_cylinder1"
-#nomepasta = "gazebo_dataset_simples1"
+nomepasta = "gazebo_dataset_simples2"
 #nomepasta = "gazebo_dataset_planes4"
-nomepasta = "gazebo_dataset_planes_perpendicular"
+#nomepasta = "gazebo_dataset_planes_perpendicular"
 #nomepasta = "gazebo_corredor"
 #nomepasta = "gazebo_dataset_planes"
 #nomepasta = "gazebo_dataset2"
@@ -55,7 +55,7 @@ first_orienta = np.asarray([])
 
 for a in range(nImages):
     #i = (a-1)*2+0+10
-    i = a+15
+    i = a+7
     color_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_rgb.png")
     depth_raw = o3d.io.read_image(nomepasta+"/"+str(i)+"_depth.png")
     # dp = cv2.imread(nomepasta+"/"+str(i)+"_depth.png",cv2.IMREAD_UNCHANGED)

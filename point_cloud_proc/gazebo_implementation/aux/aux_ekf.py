@@ -70,14 +70,6 @@ class ekf:
 
     def add_plane(self, Z):
         Z = Z.copy()
-        if np.argmax(np.abs(Z)) == 2:
-            print("chão")
-            # Z plane
-            Z[0] = 0.0001
-            Z[1] = 0.0001
-        else:
-            # XY Plane
-            Z[2] = 0.0001
 
         i_plano = self.num_total_features['feature'] # pega id do próximo plano
         self.num_total_features['feature'] = self.num_total_features['feature']+1 # soma contador de planos
@@ -127,16 +119,9 @@ class ekf:
 
     def upload_plane(self, Z, id, only_test=False):
         Z = Z.copy()
-        if np.argmax(np.abs(Z)) == 2:
-            print("chão")
-            # Z plane
-            Z[0] = 0.0001
-            Z[1] = 0.0001
-        else:
-            # XY Plane
-            Z[2] = 0.0001
-        Hxv = get_Hxv_plane(self.x_m, Z)
-        Hxp = get_Hxp_plane(self.x_m, Z)
+
+        Hxv = get_Hxv_plane(self.x_m, self.get_feature_from_id(id))
+        Hxp = get_Hxp_plane(self.x_m, self.get_feature_from_id(id))
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_plane()
 
@@ -152,13 +137,6 @@ class ekf:
             return self.x_m[(3+id*3):(3+(id+1)*3)]
 
         K = self.P_m @ Hx.T @ np.linalg.inv(S)
-        print("Kalman gain: ", K)
-        K[0, 1] = 0 
-        K[0, 2] = 0 
-        K[1, 0] = 0 
-        K[1, 2] = 0 
-        K[2, 2] = 0 
-        print("Kalman gain 2: ", K)
 
         print("Feature nova: ", Z.T)
         print("Feature antiga: ", apply_h_plane(self.x_m, self.x_m[(3+id*3):(3+(id+1)*3)]).T)
@@ -209,11 +187,11 @@ class ekf:
             for id in range(self.num_total_features['feature']):
                 if(self.type_feature_list[id] == self.types_feat['plane']):
                     Zp = apply_h_plane(self.x_m, self.get_feature_from_id(id))
-                    Hxv = get_Hxv_plane(self.x_m, Zp)
-                    Hxp = get_Hxp_plane(self.x_m, Zp)
+                    Hxv = get_Hxv_plane(self.x_m, self.get_feature_from_id(id))
+                    Hxp = get_Hxp_plane(self.x_m, self.get_feature_from_id(id))
                     Hx = get_Hx(Hxv, Hxp, id, self.P_m)
                     Hw = get_Hw_plane()
-                    W = get_W_plane()*np.linalg.norm(Zp)
+                    W = get_W_plane()
 
                     S = Hx @ self.P_m @ Hx.T + Hw @ W @ Hw.T
                     y = N - Zp
@@ -337,26 +315,6 @@ class ekf:
         pickle.dump(nsalva, f)
         f.close()
 
-
-def get_array_compensation(angvecz):
-    modx = 99
-    mody = 99
-    modz = 99
-    try:
-        modx = 1/angvecz[0]
-    except ZeroDivisionError:
-        modx = 99
-    try:
-        mody = 1/angvecz[1]
-    except ZeroDivisionError:
-        mody = 99
-    try:
-        modz = 1/angvecz[2]
-    except ZeroDivisionError:
-        modz = 99
-    return modx, mody, modz
-
-
 def get_Hx(Hxv, Hxp, id, P_m):
     # print('Hxv:\n',Hxv)
     # print('Hxp:\n',Hxp)
@@ -400,8 +358,8 @@ def init_x_P():
     return x, P
 
 def get_V():
-    sigma_x = 0.2/3
-    sigma_psi = (0.0/3*np.pi/180)
+    sigma_x = 0.05/3
+    sigma_psi = (2/3*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])
