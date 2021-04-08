@@ -177,16 +177,23 @@ class GlobalScene:
 
 
         # KALMAN FILTER --------------------------------------------
-        mu, sigma = 0, 0.5/3 # mean and standard deviation
-        noise_x = np.random.normal(mu, sigma, 1)
 
-        mu, sigma = 0, (0/3)*np.pi/180 # mean and standard deviation
-        noise_theta = np.random.normal(mu, sigma, 1)
+        if not (self.ekf.x_m[0,0]==0 and self.ekf.x_m[1,0]==0 and self.ekf.x_m[2,0]==0):
+            mv = get_V()
+            mu, sigma = 0, np.sqrt(mv[0,0]) # mean and standard deviation
+            noise_x = np.random.normal(mu, sigma, 1)[0]
+
+            mu, sigma = 0, np.sqrt(mv[0,0]) # mean and standard deviation
+            noise_theta = np.random.normal(mu, sigma, 1)[0]
+        else:
+            print("PRIMEIRA ITERAÇÃO SEM RUÍDO")
+            noise_x = 0
+            noise_theta = 0
 
         print('noise x: \n', noise_x)
         print('noise_theta: \n', noise_theta)
-        u = duration*np.asarray([[vel_linear_body.T[0] + noise_x[0]],
-                                 [vel_angular_body.T[2] + noise_theta[0]]])
+        u = duration*np.asarray([[vel_linear_body.T[0] + noise_x],
+                                 [vel_angular_body.T[2] + noise_theta]])
 
         print(u)
 

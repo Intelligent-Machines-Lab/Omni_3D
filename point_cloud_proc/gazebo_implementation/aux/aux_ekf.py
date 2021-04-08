@@ -474,17 +474,17 @@ def get_Yz(Gx, Gz, P_m):
 def init_x_P(init_angle = 0):
 
     P = np.eye(3, dtype=float)
-    P[0, 0] = get_V()[0,0]
-    P[1, 1] = get_V()[0,0]
-    P[2, 2] = get_V()[1,1]
+    P[0, 0] = 0#get_V()[0,0]
+    P[1, 1] = 0#get_V()[0,0]
+    P[2, 2] = 0#0get_V()[1,1]
 
     x = np.zeros((3, 1))
     x[2,0] = init_angle
     return x, P
 
 def get_V():
-    sigma_x = 0.5/3
-    sigma_psi = ((0/3)*np.pi/180)
+    sigma_x = 0.01/3
+    sigma_psi = ((2/3)*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])
@@ -1105,10 +1105,10 @@ def get_Gz_plane(x_state1, N1):
 
 
 def get_W_plane():
-    sigma_x = 0.1/3
-    sigma_y = 0.1/3
-    sigma_z = 0.1/3
-    sigma_d = 0.1/3
+    sigma_x = 0.04/3
+    sigma_y = 0.04/3
+    sigma_z = 0.04/3
+    sigma_d = 0.08/3
 
     W = np.asarray([[sigma_x**2, 0, 0, 0],
                     [0, sigma_y**2, 0, 0],
