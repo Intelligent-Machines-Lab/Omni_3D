@@ -9,6 +9,12 @@ import aux.cylinder
 import sys
 # from aux.cuboid import Cuboid
 
+plane_feat_size = 3
+
+if plane_feat_size == 3:
+    from aux.aux_ekf_plane3 import *
+else:
+    from aux.aux_ekf_plane4 import *
 
 class ekf:
 
@@ -72,7 +78,9 @@ class ekf:
 
 
 
-    def add_plane(self, Z):
+    def add_plane(self, Z1):
+        Z = copy.deepcopy(Z1)
+        Z = from_any_to_feature(Z)
         i_plano = self.num_total_features['feature'] # pega id do próximo plano
         self.num_total_features['feature'] = self.num_total_features['feature']+1 # soma contador de planos
         self.type_feature_list.append(self.types_feat['plane'])
@@ -119,7 +127,9 @@ class ekf:
         return i_plano
 
 
-    def upload_plane(self, Z, id, only_test=False):
+    def upload_plane(self, Z1, id, only_test=False):
+        Z = copy.deepcopy(Z1)
+        Z = from_any_to_feature(Z)
         Z = normalize_plane_feature(Z)
         Z = copy.deepcopy(Z)
         # if np.argmax(np.abs(Z)) == 2:
@@ -130,8 +140,8 @@ class ekf:
         # else:
         #     # XY Plane
         #     Z[2] = 0.0001
-        Hxv = get_Hxv_plane(self.x_m, self.x_m[(3+id*4):(3+(id+1)*4)])
-        Hxp = get_Hxp_plane(self.x_m, self.x_m[(3+id*4):(3+(id+1)*4)])
+        Hxv = get_Hxv_plane(self.x_m, self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)])
+        Hxp = get_Hxp_plane(self.x_m, self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)])
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_plane()
 
@@ -163,11 +173,11 @@ class ekf:
         #print("Feature nova: ", Z.T)
         #print("Feature antiga: ", apply_h_plane(self.x_m, self.x_m[(3+id*4):(3+(id+1)*4)]).T)
 
-        N = apply_h_plane(self.x_m, self.x_m[(3+id*4):(3+(id+1)*4)])
+        N = apply_h_plane(self.x_m, self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)])
         N = normalize_plane_feature(N)
 
-        print('SDADWAWZ[3,0] ', Z[3,0])
-        print('AWDADWN[3,0] ', N[3,0])
+        # print('SDADWAWZ[3,0] ', Z[3,0])
+        # print('AWDADWN[3,0] ', N[3,0])
 
         print("Plano no mundo antigo (visto do robo): ", (N).T)
         print("Plano medido: (visto do robo)", (Z).T)
@@ -222,25 +232,27 @@ class ekf:
         if only_test:
             x_m_test = copy.deepcopy(self.x_m + K @ v)
             P_m_test = copy.deepcopy(self.P_m - K @ Hx @ self.P_m)
-            x_m_test[(3+id*4):(3+(id+1)*4)][0:4] = normalize_plane_feature(x_m_test[(3+id*4):(3+(id+1)*4)][0:4])
-            return x_m_test[(3+id*4):(3+(id+1)*4)]
+            x_m_test[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)][0:plane_feat_size] = normalize_plane_feature(x_m_test[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)][0:plane_feat_size])
+            return x_m_test[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)]
         else:
             #print("Atualizando plano: ", Z.T)
             init = copy.deepcopy(self.x_m[0:3])
             print("Posição inicial: ", init.T)
+            print("v: ", v)
             print("K @ v: ", K @ v)
             mov_kv = K @ v
             # mov_kv[0,0] = np.cos(self.x_m[2])*mov_kv[0,0] + np.sqrt(1-np.cos(self.x_m[2])**2)*mov_kv[1,0]
             # mov_kv[1,0] = np.sin(self.x_m[2])*mov_kv[1,0] + np.sqrt(1-np.sin(self.x_m[2])**2)*mov_kv[0,0]
             # mov_kv[1,0] = np.sin(self.x_m[2])*mov_kv[0,0] + np.sin(self.x_m[2])*mov_kv[1,0]
-
+            print('self.x_m: ', self.x_m  )
+            print('mov_kv: ', mov_kv  )
             self.x_m = self.x_m + mov_kv
             print("Posição final: ", self.x_m[0:3].T)
             print("Movimento: ",(self.x_m[0:3] - init).T)
             self.P_m = self.P_m - K @ Hx @ self.P_m
 
-            self.x_m[(3+id*4):(3+(id+1)*4)][0:4] = normalize_plane_feature(self.x_m[(3+id*4):(3+(id+1)*4)][0:4])
-            print("Plano no final: ", self.x_m[(3+id*4):(3+(id+1)*4)][0:4].T)
+            self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)][0:plane_feat_size] = normalize_plane_feature(self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)][0:plane_feat_size])
+            print("Plano no final: ", self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)][0:plane_feat_size].T)
 
             # Featurenova = self.x_m[(3+id*4):(3+(id+1)*4)]
             # Featurenova_vec = Featurenova[:3,0]
@@ -256,7 +268,7 @@ class ekf:
             # print('Featurenova2: ', Featurenova2)
             # print('Featurenova vec2: ', Featurenova_vec2)
             # print('Modulo vec2: ', np.linalg.norm(Featurenova_vec2))
-            return copy.deepcopy(self.x_m[(3+id*4):(3+(id+1)*4)])
+            return copy.deepcopy(self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)])
 
 
     def upload_point(self, Z, id, only_test=False):
@@ -284,7 +296,7 @@ class ekf:
         feature = copy.deepcopy(feature)
         if isinstance(feature,aux.plane.Plane):
             eq = feature.equation
-            N = np.asarray([[eq[0],eq[1],eq[2],eq[3]]]).T
+            N = from_equation_to_feature(eq)
             distances = []
             for id in range(self.num_total_features['feature']):
                 if(self.type_feature_list[id] == self.types_feat['plane']):
@@ -375,7 +387,7 @@ class ekf:
 
     def get_feature_from_id(self, id):
 
-        return copy.deepcopy(self.x_m[(3+id*4):(3+(id+1)*4)])
+        return copy.deepcopy(self.x_m[(3+id*plane_feat_size):(3+(id+1)*plane_feat_size)])
 
     def delete_feature(self, id):
         # deleta linhas da matriz de estados
@@ -421,21 +433,7 @@ class ekf:
         f.close()
 
 
-def normalize_plane_feature(Z1):
-    Z = copy.deepcopy(Z1)
-    if Z[3,0] < 0:
-        Z[0,0] = Z[0,0]*-1
-        Z[1,0] = Z[1,0]*-1
-        Z[2,0] = Z[2,0]*-1
-        Z[3,0] = Z[3,0]*-1
 
-    Z[0,0] = Z[0,0]/np.sqrt(np.linalg.norm(Z[0:3]))
-    Z[1,0] = Z[1,0]/np.sqrt(np.linalg.norm(Z[0:3]))
-    Z[2,0] = Z[2,0]/np.sqrt(np.linalg.norm(Z[0:3]))
-    #Z[3,0] = Z[3,0]/np.linalg.norm(Z[0:3])
-
-    Z= np.round(Z,4)
-    return Z
 
 
 def get_Hx(Hxv, Hxp, id, P_m):
@@ -483,7 +481,7 @@ def init_x_P(init_angle = 0):
     return x, P
 
 def get_V():
-    sigma_x = 0.01/3
+    sigma_x = 0.1/3
     sigma_psi = ((2/3)*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
@@ -512,617 +510,8 @@ def get_Fv(x, u):
     return Fv
 
 
-# def apply_h_plane(x, N):
-#     d = np.linalg.norm(N)
-#     a = N[0,0]/d
-#     b = N[1,0]/d
-#     c = N[2,0]/d
 
-#     ux = a*(d + a*x[0,0] + b*x[1,0])
-#     uy = b*(d + a*x[0,0] + b*x[1,0])
-#     uz = c*(d + a*x[0,0] + b*x[1,0])
 
-#     zp = np.asarray( [[np.cos(x[2,0])*ux + np.sin(x[2,0])*uy],
-#                       [-np.sin(x[2,0])*ux + np.cos(x[2,0])*uy],
-#                       [uz]])
-#     return zp
-
-# def apply_h_plane(x, N):
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d  = N[3,0]
-
-#     dist_mov = x[0,0]**2+x[1,0]**2
-
-#     zp = np.asarray( [[np.cos(x[2,0])*na + np.sin(x[2,0])*nb],
-#                       [-np.sin(x[2,0])*na + np.cos(x[2,0])*nb],
-#                       [nc],
-#                       [(na*dist_mov+nb*dist_mov+d)]])
-#     if zp[3,0] < 0:
-#         print("Negativou")
-#         zp[0,0] = -zp[0,0]
-#         zp[1,0] = -zp[1,0]
-#         zp[2,0] = -zp[2,0]
-#         zp[3,0] = -zp[3,0]
-#     return zp
-
-
-# def apply_h_plane(x, N):
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d = N[3,0]
-
-#     R = get_rotation_matrix_bti([0, 0, x[2,0]])
-#     H = np.asarray([[R[0,0], R[0,1], R[0,2], x[0,0]],
-#                     [R[1,0], R[1,1], R[1,2], x[1,0]],
-#                     [R[2,0], R[2,1], R[2,2], 0],
-#                     [0, 0, 0, 1],])
-
-#     zp = np.dot(H.T,N)
-#     return zp
-
-# def apply_h_plane(x1, N1):
-#     N = copy.deepcopy(N1)
-#     x = copy.deepcopy(x1)
-#     N = normalize_plane_feature(N)
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d  = N[3,0]
-
-
-#     zp = np.asarray( [[np.cos(x[2,0])*na + np.sin(x[2,0])*nb],
-#                       [-np.sin(x[2,0])*na + np.cos(x[2,0])*nb],
-#                       [nc],
-#                       [(na*x[0,0]+nb*x[1,0]+d)]])
-#     zp = normalize_plane_feature(zp)
-    # return zp
-
-
-# def apply_h_plane(x, N):
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     nd  = N[3,0]
-
-#     n = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]).T, [na, nb, nc])
-
-#     d = (-na*x[0,0]-nb*x[1,0]+nd)
-
-
-#     zp = np.asarray([[n[0], n[1], n[2], d]]).T
-#     return zp
-
-# def apply_h_plane(x1, N1):
-#     N = copy.deepcopy(N1)
-#     x = copy.deepcopy(x1)
-#     N = normalize_plane_feature(N)
-
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     nd  = N[3,0]
-
-#     n = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]).T, [na, nb, nc])
-
-#     d = (-na*x[0,0]-nb*x[1,0]+nd)
-
-
-#     zp = np.asarray([[n[0], n[1], n[2], d]]).T
-#     zp = normalize_plane_feature(zp)
-#     return zp
-
-
-def apply_h_plane(x1, N1):
-    N = copy.deepcopy(N1)
-    x = copy.deepcopy(x1)
-    N = normalize_plane_feature(N)
-    na = N[0,0]
-    nb = N[1,0]
-    nc = N[2,0]
-    nd  = N[3,0]
-
-    n = np.asarray([[na*np.cos(x[2,0]) + nb*np.sin(x[2,0])],
-                    [-na*np.sin(x[2,0]) + nb*np.cos(x[2,0])],
-                    [nc],
-                    [na*x[0,0] + nb*x[1,0] + nd]])
-
-    zp = normalize_plane_feature(n)
-    return zp
-
-
-
-
-# def get_Hxv_plane(x, N):
-#     d = np.linalg.norm(N)
-#     a = N[0,0]/d
-#     b = N[1,0]/d
-#     c = N[2,0]/d
-
-#     ux = a*(d+a*x[0,0] + b*x[1,0])
-#     uy = b*(d+a*x[0,0] + b*x[1,0])
-#     uz = c*(d+a*x[0,0] + b*x[1,0])
-
-#     hx11 = a*a*np.cos(x[2,0]) + a*b*np.sin(x[2,0])
-#     hx12 = a*b*np.cos((x[2,0])) + b*b*np.sin((x[2,0]))
-#     hx13 = -np.sin(x[2,0])*ux + np.cos(x[2,0])*uy 
-
-#     hx21 = -a*a*np.sin(x[2,0]) + a*b* np.cos(x[2,0])
-#     hx22 = -a*b*np.sin(x[2,0]) + b*b* np.cos(x[2,0])
-#     hx23 = -np.cos(x[2,0]) *ux - np.sin(x[2,0])*uy
-
-#     hx31 = c*a
-#     hx32 = b*c
-#     hx33 = 0
-
-#     Hx = np.asarray([[hx11, hx12, hx13],
-#                      [hx21, hx22, hx23],
-#                      [hx31, hx32, hx33]])
-#     return Hx
-
-
-# def get_Hxv_plane(x1, N1):
-#     N = copy.deepcopy(N1)
-#     x = copy.deepcopy(x1)
-#     N = normalize_plane_feature(N)
-
-#     na = N[0,0]#*np.sign(np.cos(x[2,0]))
-#     nb = N[1,0]#*np.sign(np.sin(-x[2,0]))
-#     nc = N[2,0]
-#     d = N[3,0]
-
-#     hx11 = 0
-#     hx12 = 0
-#     hx13 = -np.sin(x[2,0])*na + np.cos(x[2,0])*nb
-
-
-#     hx21 = 0 
-#     hx22 = 0
-#     hx23 = -np.cos(x[2,0])*na - np.sin(x[2,0])*nb
-
-
-#     hx31 = 0
-#     hx32 = 0
-#     hx33 = 0
-
-#     hx41 = na*np.cos(x[2,0]) + nb*np.sin(x[2,0])
-#     hx42 = na*np.sin(x[2,0]) + nb*np.cos(x[2,0]) 
-#     hx43 = 0
-
-
-#     Hx = np.asarray([[hx11, hx12, hx13],
-#                      [hx21, hx22, hx23],
-#                      [hx31, hx32, hx33],
-#                      [hx41, hx42, hx43]])
-#     return Hx
-
-
-def get_Hxv_plane(x_state1, N1):
-    N = copy.deepcopy(N1)
-    x_state = copy.deepcopy(x_state1)
-
-    na = N[0,0]
-    nb = N[1,0]
-    nc = N[2,0]
-    nd = N[3,0]
-
-    x = x_state[0,0]
-    y = x_state[1,0]
-    theta = x_state[2,0]
-
-    Hx =    np.asarray([[  0,  0,   nb*np.cos(theta) - na*np.sin(theta)],
-             [  0,  0, - na*np.cos(theta) - nb*np.sin(theta)],
-             [  0,  0,                               0],
-             [ na, nb,                               0]])
-
-    return Hx
-
-
-
-
-# def get_Hxv_plane(x, N):
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d = N[3,0]
-
-#     hx11 = 0
-#     hx12 = 0
-#     hx13 = -nb
-
-
-#     hx21 = 0
-#     hx22 = 0
-#     hx23 = na
-
-
-#     hx31 = 0
-#     hx32 = 0
-#     hx33 = 0
-
-#     hx41 = na
-#     hx42 = nb
-#     hx43 = 0
-
-
-#     Hx = np.asarray([[hx11, hx12, hx13],
-#                      [hx21, hx22, hx23],
-#                      [hx31, hx32, hx33],
-#                      [hx41, hx42, hx43]])
-#     return Hx
-
-
-# def get_Hxp_plane(x, N):
-#     d = np.linalg.norm(N)
-#     a = N[0,0]/d
-#     b = N[1,0]/d
-#     c = N[2,0]/d
-
-#     dh1dnx =  (np.cos(x[2,0])*(- 2*x[0,0]*a**3 - 2*b*x[1,0]*a**2 + 2*x[0,0]*a + d + b*x[1,0]))/d - (b*np.sin(x[2,0])*(2*x[0,0]*a**2 + 2*b*x[1,0]*a - x[0,0]))/d
-#     dh1dny =  (np.sin(x[2,0])*(- 2*x[1,0]*b**3 - 2*a*x[0,0]*b**2 + 2*x[1,0]*b + d + a*x[0,0]))/d - (a*np.cos(x[2,0])*(2*x[1,0]*b**2 + 2*a*x[0,0]*b - x[1,0]))/d
-#     dh1dnz = -(2*c*(a*np.cos(x[2,0]) + b*np.sin(x[2,0]))*(a*x[0,0] + b*x[1,0]))/d
-
-#     dh2dnx = -(np.sin(x[2,0])*(- 2*x[0,0]*a**3 - 2*b*x[1,0]*a**2 + 2*x[0,0]*a + d + b*x[1,0]))/d - (b*np.cos(x[2,0])*(2*x[0,0]*a**2 + 2*b*x[1,0]*a - x[0,0]))/d
-#     dh2dny =  (np.cos(x[2,0])*(- 2*x[1,0]*b**3 - 2*a*x[0,0]*b**2 + 2*x[1,0]*b + d + a*x[0,0]))/d + (a*np.sin(x[2,0])*(2*x[1,0]*b**2 + 2*a*x[0,0]*b - x[1,0]))/d
-#     dh2dnz = -(2*c*(b*np.cos(x[2,0]) - a*np.sin(x[2,0]))*(a*x[0,0] + b*x[1,0]))/d
-
-#     dh3dnx = -(c*(2*x[0,0]*a**2 + 2*b*x[1,0]*a - x[0,0]))/d
-#     dh3dny = -(c*(2*x[1,0]*b**2 + 2*a*x[0,0]*b - x[1,0]))/d
-#     dh3dnz =  (d + a*x[0,0] + b*x[1,0] - 2*a*c**2*x[0,0] - 2*b*c**2*x[1,0])/d
-
-#     Hxp = np.asarray([[dh1dnx, dh1dny, dh1dnz],
-#                      [dh2dnx, dh2dny, dh2dnz],
-#                      [dh3dnx, dh3dny, dh3dnz]])
-#     return Hxp
-
-
-# def get_Hxp_plane(x1, N1):
-#     N = copy.deepcopy(N1)
-#     x = copy.deepcopy(x1)
-#     N = normalize_plane_feature(N)
-
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d = N[3,0]
-
-#     dh1dna = np.cos(x[2,0])
-#     dh1dnb = np.sin(x[2,0])
-#     dh1dnc = 0
-#     dh1dd  = 0
-
-#     dh2dna = -np.sin(x[2,0])
-#     dh2dnb = np.cos(x[2,0])
-#     dh2dnc = 0
-#     dh2dd  = 0
-
-#     dh3dna = 0
-#     dh3dnb = 0
-#     dh3dnc = 1
-#     dh3dd  = 0
-
-#     dh4dna = -x[0,0]*np.sin(x[2,0]) + x[1,0]*np.cos(x[2,0])
-#     dh4dnb = x[0,0]*np.cos(x[2,0]) - x[1,0]*np.sin(x[2,0])
-#     dh4dnc = 0
-#     dh4dd  = 1
-
-#     Hxp = np.asarray([[dh1dna, dh1dnb, dh1dnc, dh1dd],
-#                      [dh2dna, dh2dnb, dh2dnc, dh2dd],
-#                      [dh3dna, dh3dnb, dh3dnc, dh3dd],
-#                      [dh4dna, dh4dnb, dh4dnc, dh4dd]])
-#     return Hxp
-
-
-def get_Hxp_plane(x_state1, N1):
-    N = copy.deepcopy(N1)
-    x_state = copy.deepcopy(x_state1)
-
-    na = N[0,0]
-    nb = N[1,0]
-    nc = N[2,0]
-    nd = N[3,0]
-
-    x = x_state[0,0]
-    y = x_state[1,0]
-    theta = x_state[2,0]
-
-    Hz =    np.asarray([[  np.cos(theta), np.sin(theta), 0, 0],
-             [ -np.sin(theta), np.cos(theta), 0, 0],
-             [           0,          0, 1, 0],
-             [           x,          y, 0, 1]])
-
-    return Hz
-
-
-
-
-
-
-
-# def apply_g_plane(x, Zp):
-
-
-#     Zp = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]), Zp)
-
-#     eta = np.asarray([[x[0,0]], [x[1,0]], [0]])
-#     # print('eta: ', eta)
-#     # eta = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]), eta)
-#     # print('eta2: ', eta)
-
-#     corre = (np.dot(eta.T, Zp)/(np.linalg.norm(Zp)**2))
-#     u = Zp - corre*Zp
-
-#     # N = np.asarray( [[np.cos(x[2,0])*u[0,0] - np.sin(x[2,0])*u[1,0]],
-#     #                  [np.sin(x[2,0])*u[0,0] + np.cos(x[2,0])*u[1,0]],
-#     #                  [u[2,0]]])
-#     return u
-
-##### CORRETO
-# def apply_g_plane(x1, Zp1):
-#     Zp= copy.deepcopy(Zp1)
-#     x = copy.deepcopy(x1)
-#     Zp = normalize_plane_feature(Zp)
-#     nam = Zp[0,0]
-#     nbm = Zp[1,0]
-#     ncm = Zp[2,0]
-#     dm  = Zp[3,0]
-
-#     n = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]), [nam, nbm, ncm])
-
-#     #d = -nam*x[0,0]-nbm*x[1,0]+dm
-#     #x_inv = np.dot(get_rotation_matrix_bti([0, 0, x[2,0]]).T, [nam*x[0,0], nbm*x[1,0], 0])
-#     d = -n[0]*x[0,0]-n[1]*x[1,0] + dm
-
-#     z = np.asarray([[n[0], n[1], n[2], d]]).T
-#     z = normalize_plane_feature(z)
-#     return z
-
-
-def apply_g_plane(x1, Zp1):
-    Zp= copy.deepcopy(Zp1)
-    x = copy.deepcopy(x1)
-    Zp = normalize_plane_feature(Zp)
-    na = Zp[0,0]
-    nb = Zp[1,0]
-    nc = Zp[2,0]
-    nd  = Zp[3,0]
-
-    n = np.asarray([[na*np.cos(x[2,0]) - nb*np.sin(x[2,0]) ],
-                    [na*np.sin(x[2,0]) + nb*np.cos(x[2,0])],
-                    [nc],
-                    [-(na*np.cos(x[2,0]) - nb*np.sin(x[2,0]))*x[0,0]  -(na*np.sin(x[2,0]) + nb*np.cos(x[2,0]))*x[1,0] + nd]])
-
-    zp = normalize_plane_feature(n)
-    return zp
-
-
-# def apply_g_plane(x1, N1):
-#     N = copy.deepcopy(N1)
-#     x = copy.deepcopy(x1)
-#     N = normalize_plane_feature(N)
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d  = N[3,0]
-
-
-#     zp = np.asarray( [[na*np.cos(x[2,0]) - nb*np.sin(x[2,0])],
-#                       [na*np.sin(x[2,0]) + nb*np.cos(x[2,0])],
-#                       [nc],
-#                       [na*(-x[0,0]*np.cos(x[2,0])-x[1,0]*np.sin(x[2,0])) + nb*(x[0,0]*np.sin(x[2,0]) - x[1,0]*np.cos(x[2,0]) ) + d]])
-#     zp = normalize_plane_feature(zp)
-#     return zp
-
-# def apply_g_plane(x, N):
-#     N = copy.deepcopy(N)
-#     x = copy.deepcopy(x)
-#     N = normalize_plane_feature(N)
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d = N[3,0]
-
-
-
-#     R = get_rotation_matrix_bti([0, 0, x[2,0]])
-#     H = np.asarray([[R[0,0], R[0,1], R[0,2], x[0,0]],
-#                     [R[1,0], R[1,1], R[1,2], x[1,0]],
-#                     [R[2,0], R[2,1], R[2,2], 0],
-#                     [0, 0, 0, 1],])
-
-#     H_inv = np.linalg.inv(H)
-#     zp = np.dot(H_inv.T,N)
-#     zp = normalize_plane_feature(zp)
-#     return zp
-
-# def get_Gx_plane(x, Zp):
-#     d = np.linalg.norm(Zp)
-#     a = Zp[0,0]/d
-#     b = Zp[1,0]/d
-#     c = Zp[2,0]/d
-
-#     dg1dx = (d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))**2)/(d**2*(a**2 + b**2 + c**2))**(1/2)
-#     dg1dy = (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*np.cos(x[2,0]) - b*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
-#     dg1dpsi = - a*d*np.sin(x[2,0]) - b*d*np.cos(x[2,0]) - (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(b*x[0,0]*np.cos(x[2,0]) - a*x[1,0]*np.cos(x[2,0]) + a*x[0,0]*np.sin(x[2,0]) + b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
- 
-#     dg2dx = (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*np.cos(x[2,0]) - b*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
-#     dg2dy = (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))**2)/(d**2*(a**2 + b**2 + c**2))**(1/2)
-#     dg2dpsi = a*d*np.cos(x[2,0]) - b*d*np.sin(x[2,0]) - (d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(b*x[0,0]*np.cos(x[2,0]) - a*x[1,0]*np.cos(x[2,0]) + a*x[0,0]*np.sin(x[2,0]) + b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
-
-#     dg3dx = (c*d**2*(a*np.cos(x[2,0]) - b*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
-#     dg3dy = (c*d**2*(b*np.cos(x[2,0]) + a*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
-#     dh3dpsi = -(c*d**2*(b*x[0,0]*np.cos(x[2,0]) - a*x[1,0]*np.cos(x[2,0]) + a*x[0,0]*np.sin(x[2,0]) + b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2)
-
-#     Gxp = np.asarray([[dg1dx, dg1dy, dg1dpsi],
-#                      [dg2dx, dg2dy, dg2dpsi],
-#                      [dg3dx, dg3dy, dh3dpsi]])
-#     return Gxp
-
-# def get_Gx_plane(x1, N1):
-#     N = copy.deepcopy(N1)
-#     x = copy.deepcopy(x1)
-#     N = normalize_plane_feature(N)
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d = N[3,0]
-
-#     hx11 = 0
-#     hx12 = 0
-#     hx13 = -np.sin(x[2,0])*na - np.cos(x[2,0])*nb
-
-
-#     hx21 = 0
-#     hx22 = 0
-#     hx23 = np.cos(x[2,0])*na - np.sin(x[2,0])*nb
-
-
-#     hx31 = 0
-#     hx32 = 0
-#     hx33 = 0
-
-#     hx41 = -(na*np.cos(x[2,0]) - nb*np.sin(x[2,0]))
-#     hx42 = (na*np.sin(x[2,0]) + nb*np.cos(x[2,0]))
-#     hx43 = x[0,0]*(np.sin(x[2,0])*na +np.cos(x[2,0])*nb) + x[1,0]*(-na*np.cos(x[2,0])+nb*np.sin(x[2,0]))
-
-
-
-
-
-#     Hx = np.asarray([[hx11, hx12, hx13],
-#                      [hx21, hx22, hx23],
-#                      [hx31, hx32, hx33],
-#                      [hx41, hx42, hx43]])
-#     return Hx
-
-
-
-def get_Gx_plane(x_state1, N1):
-    N = copy.deepcopy(N1)
-    x_state = copy.deepcopy(x_state1)
-
-    na = N[0,0]
-    nb = N[1,0]
-    nc = N[2,0]
-    nd = N[3,0]
-
-    x = x_state[0,0]
-    y = x_state[1,0]
-    theta = x_state[2,0]
-
-    Gx =    np.asarray([[                             0,                               0,                                       - nb*np.cos(theta) - na*np.sin(theta)],
-                         [                             0,                               0,                                         na*np.cos(theta) - nb*np.sin(theta)],
-                         [                             0,                               0,                                                                     0],
-                         [ nb*np.sin(theta) - na*np.cos(theta), - nb*np.cos(theta) - na*np.sin(theta), x*(nb*np.cos(theta) + na*np.sin(theta)) - y*(na*np.cos(theta) - nb*np.sin(theta))]])
-
-    return Gx
-
-# def get_Gz_plane(x, Zp):
-#     d = np.linalg.norm(Zp)
-#     a = Zp[0,0]/d
-#     b = Zp[1,0]/d
-#     c = Zp[2,0]/d
-
-#     dg1dnx = np.cos(x[2,0]) + (d*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(x[0,0]*np.cos(x[2,0]) + x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d*np.cos(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (a*d**3*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-#     dg1dny = (d*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(x[1,0]*np.cos(x[2,0]) - x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - np.sin(x[2,0]) - (d*np.sin(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (b*d**3*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-#     dg1dnz = -(c*d**3*(a*np.cos(x[2,0]) - b*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-    
-#     dg2dnx = np.sin(x[2,0]) + (d*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(x[0,0]*np.cos(x[2,0]) + x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d*np.sin(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (a*d**3*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-#     dg2dny = np.cos(x[2,0]) + (d*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(x[1,0]*np.cos(x[2,0]) - x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) + (d*np.cos(x[2,0])*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (b*d**3*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-#     dg2dnz = -(c*d**3*(b*np.cos(x[2,0]) + a*np.sin(x[2,0]))*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-
-#     dg3dnx = (c*d**3*(b**2*x[0,0]*np.cos(x[2,0]) + c**2*x[0,0]*np.cos(x[2,0]) + b**2*x[1,0]*np.sin(x[2,0]) + c**2*x[1,0]*np.sin(x[2,0]) - a*b*x[1,0]*np.cos(x[2,0]) + a*b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-#     dg3dny = -(c*d**3*(a**2*x[0,0]*np.sin(x[2,0]) - c**2*x[1,0]*np.cos(x[2,0]) - a**2*x[1,0]*np.cos(x[2,0]) + c**2*x[0,0]*np.sin(x[2,0]) + a*b*x[0,0]*np.cos(x[2,0]) + a*b*x[1,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2)
-#     dg3dnz = (d*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(1/2) - (c**2*d**3*(a*x[0,0]*np.cos(x[2,0]) + b*x[1,0]*np.cos(x[2,0]) + a*x[1,0]*np.sin(x[2,0]) - b*x[0,0]*np.sin(x[2,0])))/(d**2*(a**2 + b**2 + c**2))**(3/2) + 1
-
-#     Gz = np.asarray([[dg1dnx, dg1dny, dg1dnz],
-#                      [dg2dnx, dg2dny, dg2dnz],
-#                      [dg3dnx, dg3dny, dg3dnz]])
-#     return Gz
-
-# def get_Gz_plane(x1, N1):
-#     N = copy.deepcopy(N1)
-#     x = copy.deepcopy(x1)
-#     N = normalize_plane_feature(N)
-#     na = N[0,0]
-#     nb = N[1,0]
-#     nc = N[2,0]
-#     d  = N[3,0]
-
-#     dh1dna = np.cos(x[2,0])
-#     dh1dnb = -np.sin(x[2,0])
-#     dh1dnc = 0
-#     dh1dd  = 0
-
-#     dh2dna = np.sin(x[2,0])
-#     dh2dnb = np.cos(x[2,0])
-#     dh2dnc = 0
-#     dh2dd  = 0
-
-#     dh3dna = 0
-#     dh3dnb = 0
-#     dh3dnc = 1
-#     dh3dd  = 0
-
-#     dh4dna = -x[0,0]*np.cos(x[2,0]) - x[1,0]*np.sin(x[2,0])
-#     dh4dnb = x[0,0]*np.sin(x[2,0]) - x[1,0]*np.cos(x[2,0])
-#     dh4dnc = 0
-#     dh4dd  = 1
-
-#     Hxp = np.asarray([[dh1dna, dh1dnb, dh1dnc, dh1dd],
-#                      [dh2dna, dh2dnb, dh2dnc, dh2dd],
-#                      [dh3dna, dh3dnb, dh3dnc, dh3dd],
-#                      [dh4dna, dh4dnb, dh4dnc, dh4dd]])
-#     return Hxp
-
-
-
-def get_Gz_plane(x_state1, N1):
-    N = copy.deepcopy(N1)
-    x_state = copy.deepcopy(x_state1)
-
-    na = N[0,0]
-    nb = N[1,0]
-    nc = N[2,0]
-    nd = N[3,0]
-
-    x = x_state[0,0]
-    y = x_state[1,0]
-    theta = x_state[2,0]
-
-    Gx =    np.asarray([[                    np.cos(theta),                 -np.sin(theta), 0, 0],
-                         [                    np.sin(theta),                  np.cos(theta), 0, 0],
-                         [                             0,                           0, 1, 0],
-                         [ - x*np.cos(theta) - y*np.sin(theta), x*np.sin(theta) - y*np.cos(theta), 0, 1]])
-
-
-    return Gx
-
-
-
-
-
-def get_W_plane():
-    sigma_x = 0.04/3
-    sigma_y = 0.04/3
-    sigma_z = 0.04/3
-    sigma_d = 0.08/3
-
-    W = np.asarray([[sigma_x**2, 0, 0, 0],
-                    [0, sigma_y**2, 0, 0],
-                    [0, 0, sigma_z**2, 0],
-                    [0, 0, 0, sigma_d**2] ])
-    return W
-
-def get_Hw_plane():
-    Hw = np.asarray([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1]])
-
-    return Hw
 
 
 

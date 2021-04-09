@@ -182,7 +182,7 @@ class Generic_feature:
                 Z = np.asarray([[compare_feat.feat.equation[0],compare_feat.feat.equation[1],compare_feat.feat.equation[2],compare_feat.feat.equation[3]]]).T
                 Z = apply_h_plane(ekf.x_m, Z)
                 N = ekf.upload_plane(Z, self.id, only_test= False)
-                self.feat.append_plane(compare_feat, copy.deepcopy([N[0,0], N[1,0], N[2,0], N[3,0]]))
+                self.feat.append_plane(compare_feat, copy.deepcopy(from_feature_to_equation(N)))
                 return True
                 # neweq = [N[0,0], N[1,0], N[2,0], N[3,0]]
 
