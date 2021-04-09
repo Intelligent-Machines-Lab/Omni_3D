@@ -9,7 +9,7 @@ import aux.cylinder
 import sys
 # from aux.cuboid import Cuboid
 
-plane_feat_size = 3
+plane_feat_size = 4
 
 if plane_feat_size == 3:
     from aux.aux_ekf_plane3 import *
@@ -272,8 +272,8 @@ class ekf:
 
 
     def upload_point(self, Z, id, only_test=False):
-        Hxv = get_Hxv_point(self.x_m, Z)
-        Hxp = get_Hxp_point(self.x_m, Z)
+        Hxv = get_Hxv_point(self.x_m, self.get_feature_from_id(id))
+        Hxp = get_Hxp_point(self.x_m, self.get_feature_from_id(id))
         Hx = get_Hx(Hxv, Hxp, id, self.P_m)
         Hw = get_Hw_point()
         W = get_W_point()
@@ -337,8 +337,8 @@ class ekf:
             for id in range(self.num_total_features['feature']):
                 if(self.type_feature_list[id] == self.types_feat['point']):
                     Zp = apply_h_point(self.x_m, self.get_feature_from_id(id))
-                    Hxv = get_Hxv_point(self.x_m, Zp)
-                    Hxp = get_Hxp_point(self.x_m, Zp)
+                    Hxv = get_Hxv_point(self.x_m, self.get_feature_from_id(id))
+                    Hxp = get_Hxp_point(self.x_m, self.get_feature_from_id(id))
                     Hx = get_Hx(Hxv, Hxp, id, self.P_m)
                     Hw = get_Hw_point()
                     W = get_W_point()
@@ -356,7 +356,7 @@ class ekf:
             if distances:
                 idmin = min(enumerate(distances), key=itemgetter(1))[0]
                 # antes tava 16 
-                if(distances[idmin] > 4):
+                if(distances[idmin] > 6):
                     idmin = -1
             else:
                 idmin = -1
@@ -481,8 +481,8 @@ def init_x_P(init_angle = 0):
     return x, P
 
 def get_V():
-    sigma_x = 0.1/3
-    sigma_psi = ((2/3)*np.pi/180)
+    sigma_x = 0.5/3
+    sigma_psi = ((10/3)*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])

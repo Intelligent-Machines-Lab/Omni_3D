@@ -183,7 +183,7 @@ class GlobalScene:
             mu, sigma = 0, np.sqrt(mv[0,0]) # mean and standard deviation
             noise_x = np.random.normal(mu, sigma, 1)[0]
 
-            mu, sigma = 0, np.sqrt(mv[0,0]) # mean and standard deviation
+            mu, sigma = 0, np.sqrt(mv[1,1]) # mean and standard deviation
             noise_theta = np.random.normal(mu, sigma, 1)[0]
         else:
             print("PRIMEIRA ITERAÇÃO SEM RUÍDO")
