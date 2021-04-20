@@ -18,6 +18,7 @@ import pandas as pd
 import threading #thread module imported
 import traceback
 import _thread
+import sys
 
 #nomepasta = "gazebo_dataset_circular_planes"
 #nomepasta = "gazebo_dataset_circular_cylinder1"
@@ -29,7 +30,7 @@ import _thread
 #nomepasta = "gazebo_dataset_planes"
 #nomepasta = "gazebo_dataset_planes2"
 #nomepasta = "gazebo_dataset_planes3"
-nomepasta = "gazebo_dataset2"
+nomepasta = "gazebo_dataset3"
 #nomepasta = "gazebo_rotaciona"
 list_depth = sorted(glob.glob(nomepasta+"/*_depth.png"))
 list_rgb = sorted(glob.glob(nomepasta+"/*_rgb.png"))
@@ -43,7 +44,7 @@ nImages = len(df.index)
 transformationList = [] # Should be n-1 images
 gc = GlobalScene()
 
-add_scene = 8#150
+add_scene = 15#150
 
 last_angx = df['ang_x'].values[add_scene]
 last_angy = df['ang_y'].values[add_scene]

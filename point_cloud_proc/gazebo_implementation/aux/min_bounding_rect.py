@@ -43,6 +43,7 @@ import sys  # maxint
 import numpy as np
 
 def minBoundingRect(hull_points_2d):
+    #sys.setrecursionlimit(999)
     #print "Input convex hull points: "
     #print hull_points_2d
 

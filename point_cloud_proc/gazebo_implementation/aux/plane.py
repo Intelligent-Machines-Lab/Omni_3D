@@ -7,6 +7,10 @@ import aux.aux_ekf as a_ekf
 from aux.qhull_2d import *
 from aux.min_bounding_rect import *
 import matplotlib.pyplot as plt
+import pickle
+
+
+
 class Plane:
 
     def __init__(self):
@@ -300,6 +304,14 @@ class Plane:
         dd_plano = np.delete(inliers_plano, 2, 1)
 
         # Fita retângulo de menor área
+        print('dd_plano: ',dd_plano.shape)
+
+        filename = 'pontos.pckl'
+        outfile = open(filename,'wb')
+        pickle.dump(dd_plano,outfile)
+        outfile.close()
+
+
         hull_points = qhull2D(dd_plano)
         hull_points = hull_points[::-1]
         (rot_angle, area, width, height, center_point, corner_points) = minBoundingRect(hull_points)

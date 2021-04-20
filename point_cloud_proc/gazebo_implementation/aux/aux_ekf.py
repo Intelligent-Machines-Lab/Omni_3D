@@ -9,7 +9,7 @@ import aux.cylinder
 import sys
 # from aux.cuboid import Cuboid
 
-plane_feat_size = 4
+plane_feat_size = 3
 
 if plane_feat_size == 3:
     from aux.aux_ekf_plane3 import *
@@ -288,6 +288,9 @@ class ekf:
             P_m_test = self.P_m - K @ Hx @ self.P_m
             return x_m_test[(3+id*3):(3+(id+1)*3)]
         else:
+            print("O Cilindro vai modificar o vetor de estados assim:")
+            print("K @ v: ")
+            print(K @ v)
             self.x_m = self.x_m + K @ v
             self.P_m = self.P_m - K @ Hx @ self.P_m
             return self.x_m[(3+id*3):(3+(id+1)*3)]
@@ -356,7 +359,7 @@ class ekf:
             if distances:
                 idmin = min(enumerate(distances), key=itemgetter(1))[0]
                 # antes tava 16 
-                if(distances[idmin] > 6):
+                if(distances[idmin] > 10):
                     idmin = -1
             else:
                 idmin = -1
@@ -481,8 +484,8 @@ def init_x_P(init_angle = 0):
     return x, P
 
 def get_V():
-    sigma_x = 0.5/3
-    sigma_psi = ((10/3)*np.pi/180)
+    sigma_x = 0.2/3
+    sigma_psi = ((5/3)*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])

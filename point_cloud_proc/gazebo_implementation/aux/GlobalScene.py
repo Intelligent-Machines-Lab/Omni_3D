@@ -43,6 +43,9 @@ class GlobalScene:
 
         self.ekf = ekf()
 
+        self.use_planes = True
+        self.use_cylinders = True
+
 
     def get_feature_from_id(self, id):
         for i_global in self.features_objects:
@@ -255,8 +258,9 @@ class GlobalScene:
         scene_features=[]
 
         planes_list = []
-        planes_list.extend(ls.mainPlanes.copy())
-        planes_list.extend(ls.secundaryPlanes.copy())
+        if self.use_planes:
+            planes_list.extend(ls.mainPlanes.copy())
+            planes_list.extend(ls.secundaryPlanes.copy())
 
         mundinho = []
         print('mundinho: ', mundinho)
@@ -333,25 +337,25 @@ class GlobalScene:
                 self.features_objects.append(gfeature)
 
 
+        if self.use_cylinders:
+            for x in range(len(ls.mainCylinders)):
+                #i = self.ekf.add_plane(z_medido)
+                #gfeature.id = i
+                #self.features_objects.append(gfeature)
 
-        # for x in range(len(ls.mainCylinders)):
-        #     #i = self.ekf.add_plane(z_medido)
-        #     #gfeature.id = i
-        #     #self.features_objects.append(gfeature)
+                cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
+                id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
+                ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+                gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
+                if not id == -1:
+                    older_feature = self.get_feature_from_id(id)
+                    if not older_feature.correspond(gfeature, self.ekf):
+                        id = -1
+                if id == -1:
+                    i = self.ekf.add_point(cent)
+                    gfeature.id = i
 
-        #     cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
-        #     id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
-        #     ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-        #     gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
-        #     if not id == -1:
-        #         older_feature = self.get_feature_from_id(id)
-        #         if not older_feature.correspond(gfeature, self.ekf):
-        #             id = -1
-        #     if id == -1:
-        #         i = self.ekf.add_point(cent)
-        #         gfeature.id = i
-
-        #         self.features_objects.append(gfeature)
+                    self.features_objects.append(gfeature)
 
 
 
