@@ -241,7 +241,7 @@ class GlobalScene:
         ls.findMainPlanes()
         ls.defineGroundNormal(ground_eq_reserva=self.ground_equation)
         #o3d.visualization.draw_geometries(ls.getMainPlanes())
-        #ls.showNotPlanes()
+        ls.showNotPlanes()
         ls.clusterizeObjects()
         #ls.showObjects()
         ls.fitCylinder()
@@ -280,8 +280,8 @@ class GlobalScene:
             z_medido = np.asarray([[planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2], planes_list[x].equation[3]]]).T
             normal_feature = np.asarray([planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2]])
             bigger_axis = np.argmax(np.abs(normal_feature))
-            if bigger_axis == 2:
-                continue
+            # if bigger_axis == 2:
+            #     continue
 
             planes_list[x].move(self.ekf)
             gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
@@ -542,7 +542,7 @@ class GlobalScene:
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=200):#126):
+        if(i >=0):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')

@@ -15,8 +15,8 @@ while(n <= nImages):
 		# dp = cv2.imread('images_alinhadas/1_depth.png',cv2.IMREAD_UNCHANGED)
 		# depth_raw = o3d.geometry.Image(dp)
 
-		color_raw = o3d.io.read_image("images_alinhadas/5_rgb.jpg")
-		depth_raw = o3d.io.read_image('images_alinhadas/5_depth.png')
+		color_raw = o3d.io.read_image("images_alinhadas/6_rgb.jpg")
+		depth_raw = o3d.io.read_image('images_alinhadas/6_depth.png')
 
 		rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_raw, depth_raw, depth_scale=1/depth_scale, depth_trunc=clipping_distance_in_cm_max, convert_rgb_to_intensity=False)
 		print(rgbd_image)
