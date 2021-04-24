@@ -26,7 +26,7 @@ class LocalScene:
         self.groundID = 0
 
         self.circulation_cylinder = 0.04
-        self.percentage_std_radius = 0.1
+        self.percentage_std_radius = 0.2
 
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
@@ -75,10 +75,10 @@ class LocalScene:
                 break
             
             p = Plane()
-            best_eq, best_inliers, valid = p.findPlane(points, thresh=0.05, minPoints=3, maxIteration=1000)
+            best_eq, best_inliers, valid = p.findPlane(points, thresh=0.05, minPoints=100, maxIteration=1000)
             inlier_cloud_list.append(copy.deepcopy(outlier_cloud).select_by_index(best_inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
             qtn_inliers = best_inliers.shape[0]
-            if(qtn_inliers < int(0.15*self.npontos)):
+            if(qtn_inliers < int(0.1*self.npontos)):
                 break
             out = copy.deepcopy(outlier_cloud).select_by_index(best_inliers, invert=True)
             points = np.asarray(out.points)
@@ -91,10 +91,10 @@ class LocalScene:
                 self.mainPlanes.append(p)
             if(self.filter_radius):
                 #print("TA NO MAIN")
-                cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.0012*self.npontos), radius=0.2)
-                #display_inlier_outlier(outlier_cloud, ind)
+                cl, ind = outlier_cloud.remove_radius_outlier(nb_points=int(0.0012*self.npontos), radius=0.12)
+                display_inlier_outlier(outlier_cloud, ind)
                 outlier_cloud = outlier_cloud.select_by_index(ind)
-        o3d.visualization.draw_geometries(inlier_cloud_list)
+            o3d.visualization.draw_geometries(inlier_cloud_list)
         self.pointCloud_notMainPlanes = outlier_cloud
 
 
@@ -220,7 +220,7 @@ class LocalScene:
         else:
             obcylinder = cymesh
         return obcylinder
-        #o3d.visualization.draw_geometries(obcylinder)
+        o3d.visualization.draw_geometries(obcylinder)
 
     def is_cylinder(self, cylinder):
         cylinder_condition = True

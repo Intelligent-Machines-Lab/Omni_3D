@@ -43,7 +43,7 @@ class GlobalScene:
 
         self.ekf = ekf()
 
-        self.use_planes = True
+        self.use_planes = False
         self.use_cylinders = True
 
 

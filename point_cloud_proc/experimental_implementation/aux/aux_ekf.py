@@ -329,7 +329,7 @@ class ekf:
                     distances.append(99999)
             if distances:
                 idmin = min(enumerate(distances), key=itemgetter(1))[0] 
-                if(distances[idmin] > 1):
+                if(distances[idmin] > 3):
                     idmin = -1
             else:
                 idmin = -1
@@ -485,7 +485,7 @@ def init_x_P(init_angle = 0):
 
 def get_V():
     sigma_x = 0.2/3
-    sigma_psi = ((5/3)*np.pi/180)
+    sigma_psi = ((10/3)*np.pi/180)
 
     V = np.asarray([[sigma_x**2, 0],
                     [0, sigma_psi**2] ])
