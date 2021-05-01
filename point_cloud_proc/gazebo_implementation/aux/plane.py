@@ -21,6 +21,9 @@ class Plane:
         self.nPoints = 0
         self.centroid = []
 
+        self.store_point_bucket = True
+        self.bucket = []
+
 
     def findPlane(self, pts, thresh=0.05, minPoints=3, maxIteration=1000):
         n_points = pts.shape[0]
@@ -149,6 +152,7 @@ class Plane:
 
 
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
+        self.bucket = self.inliers
 
         
         self.points_main = np.dot(self.points_main, rotMatrix.T)
@@ -235,6 +239,7 @@ class Plane:
 
 
     def append_plane(self, plano, neweq = [], nvezes=0):
+
         #print("Shape antes de append: "+str(self.inliers.shape[0]))
         
         # #print("Shape depois de append: "+str(self.inliers.shape[0]))
@@ -249,6 +254,13 @@ class Plane:
         neweq = copy.deepcopy(neweq)
         usa_media = False
         points = plano.feat.points_main
+
+
+        # Add points to point bucket
+        if self.store_point_bucket:
+            self.bucket = np.append(self.bucket, plano.feat.inliers, axis=0)
+
+
         if(usa_media):
             eqplano2 = plano.feat.equation
             nvezes_plano2 = plano.running_geo["total"]

@@ -542,7 +542,7 @@ class GlobalScene:
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=0):#126):
+        if(i >=100):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')
@@ -551,6 +551,7 @@ class GlobalScene:
             #ax.plot3D(posi[:, 0], posi[:, 1], posi[:, 2], 'gray')
             #plt.show()
             #ax.plot(atual_loc[:, 0],atual_loc[:, 1],atual_loc[:, 2])
+        self.showPoints()
 
         self.ekf.save_file(u_real, u)
 
@@ -599,7 +600,15 @@ class GlobalScene:
 
 
 
+    def showPoints(self):
+        global_bucket = []
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Plane):
+                pcd = o3d.geometry.PointCloud()
+                pcd.points = o3d.utility.Vector3dVector(self.features_objects[x].feat.bucket)
+                global_bucket.append(pcd)
 
+        o3d.visualization.draw_geometries(global_bucket)
 
 
 
