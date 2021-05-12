@@ -16,6 +16,14 @@ class Cylinder:
         self.circulation_mean = 0
         self.circulation_std = 0
 
+        self.store_point_bucket = True
+
+        self.bucket = o3d.geometry.PointCloud()
+        self.bucket.points = o3d.utility.Vector3dVector([])
+
+        self.bucket_pos = o3d.geometry.PointCloud()
+        self.bucket_pos.points = o3d.utility.Vector3dVector([])
+
 
     def find(self, pts, thresh=0.2, minPoints=50, maxIteration=5000, useRANSAC = True, forceAxisVector = []):
         
@@ -193,11 +201,26 @@ class Cylinder:
         self.inliers = np.dot(self.inliers, rotMatrix.T) + translation
         self.normal = np.dot(rotMatrix, self.normal)
 
+        self.bucket.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+        self.bucket_pos.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+
     def append_cylinder(self, compare_feat, Z_new):
         #print("Centro antes: "+str(self.center))
         diff = np.asarray(self.center) - np.asarray([Z_new[0,0], Z_new[1,0], Z_new[2,0]])
         self.center = [Z_new[0,0], Z_new[1,0], Z_new[2,0]]
         #print("Centro depois: "+str(self.center))
+
+        if self.store_point_bucket:
+            self.bucket_pos.points = o3d.utility.Vector3dVector(np.append(self.bucket_pos.points, compare_feat.feat.inliers, axis=0))
+
+            diff_feat_observada = np.asarray(compare_feat.feat.center) - np.asarray([Z_new[0,0], Z_new[1,0], Z_new[2,0]])
+            inliers_observado_corrected = compare_feat.feat.inliers - diff_feat_observada
+            inliers_feature_corrected = self.bucket.points - diff
+            corrected_points =np.append(inliers_feature_corrected, inliers_observado_corrected, axis=0)
+
+            self.bucket.points = o3d.utility.Vector3dVector(corrected_points)
+
+
         self.inliers = self.inliers + diff # não sei se os pixeis tão alinhados
 
         self.radius = (self.radius + compare_feat.feat.radius)/2

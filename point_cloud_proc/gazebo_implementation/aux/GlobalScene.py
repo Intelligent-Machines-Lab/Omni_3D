@@ -201,6 +201,7 @@ class GlobalScene:
         print(u)
 
         self.ekf.propagate(u)
+        self.ekf.update_real_odom_states(u_real, u)
         # if self.ekf.num_total_features['feature'] > 3:
         #     neweq = self.ekf.upload_plane(np.asarray([[1], [0], [0]]), 0)
         #     print('neweq: ', neweq)
@@ -241,7 +242,7 @@ class GlobalScene:
         ls.findMainPlanes()
         ls.defineGroundNormal(ground_eq_reserva=self.ground_equation)
         #o3d.visualization.draw_geometries(ls.getMainPlanes())
-        ls.showNotPlanes()
+        #ls.showNotPlanes()
         ls.clusterizeObjects()
         #ls.showObjects()
         ls.fitCylinder()
@@ -276,6 +277,9 @@ class GlobalScene:
             mundinho = []
             mundinho.extend(self.fet_geo)
             id = self.ekf.calculate_mahalanobis(planes_list[x])
+
+            inliers_raw = planes_list[x].inliers
+
             #id = -1
             z_medido = np.asarray([[planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2], planes_list[x].equation[3]]]).T
             normal_feature = np.asarray([planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2]])
@@ -551,10 +555,12 @@ class GlobalScene:
             #ax.plot3D(posi[:, 0], posi[:, 1], posi[:, 2], 'gray')
             #plt.show()
             #ax.plot(atual_loc[:, 0],atual_loc[:, 1],atual_loc[:, 2])
+        
+
+        self.ekf.save_file()
+        
+
         self.showPoints()
-
-        self.ekf.save_file(u_real, u)
-
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)
         f.close()
@@ -604,11 +610,48 @@ class GlobalScene:
         global_bucket = []
         for x in range(len(self.features_objects)):
             if isinstance(self.features_objects[x].feat,Plane):
-                pcd = o3d.geometry.PointCloud()
-                pcd.points = o3d.utility.Vector3dVector(self.features_objects[x].feat.bucket)
-                global_bucket.append(pcd)
+                self.features_objects[x].feat.bucket_odom.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket_odom)
+            # elif isinstance(self.features_objects[x].feat,Cylinder):
+            #     self.features_objects[x].feat.bucket_pos.paint_uniform_color(self.features_objects[x].feat.color)
+            #     global_bucket.append(self.features_objects[x].feat.bucket_pos)
+        o3d.visualization.draw_geometries(global_bucket)
+
+        global_bucket = []
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Plane):
+                self.features_objects[x].feat.bucket_pos.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket_pos)
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                self.features_objects[x].feat.bucket_pos.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket_pos)
+        o3d.visualization.draw_geometries(global_bucket)
+
+        global_bucket = []
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Plane):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket)
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket)
 
         o3d.visualization.draw_geometries(global_bucket)
+
+
+        # global_bucket = []
+        # for x in range(len(self.features_objects)):
+        #     if isinstance(self.features_objects[x].feat,Plane):
+        #         self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+        #         pontos = copy.deepcopy(self.features_objects[x].feat.bucket)
+        #         pontos.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=10))
+        #         radii = [0.1, 0.3]
+        #         rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(pontos, o3d.utility.DoubleVector(radii))
+        #         global_bucket.append(rec_mesh)
+        #         print("passou aqui")
+
+        # o3d.visualization.draw_geometries(global_bucket, mesh_show_back_face=True)
+        
 
 
 

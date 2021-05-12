@@ -404,10 +404,11 @@ class ekf:
 
         self.num_total_features['plane'] = self.num_total_features['plane']-1
 
-
-    def save_file(self, u_real, u):
+    def update_real_odom_states(self, u_real, u):
         self.x_real = apply_f(self.x_real, u_real)
         self.x_errado = apply_f(self.x_errado, u)
+
+    def save_file(self):
 
         self.x_p_list.append(self.x_p.copy())
         self.P_p_list.append(self.P_p.copy())

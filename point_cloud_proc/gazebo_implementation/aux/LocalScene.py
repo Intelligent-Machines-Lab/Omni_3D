@@ -26,8 +26,10 @@ class LocalScene:
         self.groundID = 0
 
         self.circulation_cylinder = 0.04
-        self.percentage_std_radius = 0.1
-
+        
+        #self.percentage_std_radius = 0.1 #good one in gazebo
+        self.percentage_std_radius = 0.2
+        
     def custom_draw_geometry(self):
         # The following code achieves the same effect as:
         # o3d.visualization.draw_geometries([pcd])
