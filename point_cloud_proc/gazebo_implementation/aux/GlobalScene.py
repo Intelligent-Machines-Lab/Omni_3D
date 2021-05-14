@@ -349,7 +349,7 @@ class GlobalScene:
 
                 cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
                 id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
-                ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
+                ls.mainCylinders[x].move(self.ekf)
                 gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
                 if not id == -1:
                     older_feature = self.get_feature_from_id(id)
@@ -612,9 +612,9 @@ class GlobalScene:
             if isinstance(self.features_objects[x].feat,Plane):
                 self.features_objects[x].feat.bucket_odom.paint_uniform_color(self.features_objects[x].feat.color)
                 global_bucket.append(self.features_objects[x].feat.bucket_odom)
-            # elif isinstance(self.features_objects[x].feat,Cylinder):
-            #     self.features_objects[x].feat.bucket_pos.paint_uniform_color(self.features_objects[x].feat.color)
-            #     global_bucket.append(self.features_objects[x].feat.bucket_pos)
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                self.features_objects[x].feat.bucket_odom.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket_odom)
         o3d.visualization.draw_geometries(global_bucket)
 
         global_bucket = []
@@ -637,6 +637,11 @@ class GlobalScene:
                 global_bucket.append(self.features_objects[x].feat.bucket)
 
         o3d.visualization.draw_geometries(global_bucket)
+
+
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Cylinder):
+                self.features_objects[x].feat.get_high_level_feature()
 
 
         # global_bucket = []

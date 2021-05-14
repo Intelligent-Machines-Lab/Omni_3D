@@ -3,7 +3,8 @@ import numpy as np
 import random
 import copy 
 from aux.aux import *
-
+from aux.qhull_2d import *
+from aux.min_bounding_rect import *
 class Cylinder:
 
     def __init__(self):
@@ -23,6 +24,9 @@ class Cylinder:
 
         self.bucket_pos = o3d.geometry.PointCloud()
         self.bucket_pos.points = o3d.utility.Vector3dVector([])
+
+        self.bucket_odom = o3d.geometry.PointCloud()
+        self.bucket_odom.points = o3d.utility.Vector3dVector([])
 
 
     def find(self, pts, thresh=0.2, minPoints=50, maxIteration=5000, useRANSAC = True, forceAxisVector = []):
@@ -194,15 +198,31 @@ class Cylinder:
         if(showNormal):
             o3d.visualization.draw_geometries([pcd, pcd2], point_show_normal=True)
 
-    def move(self, rotMatrix=[[1,0,0],[0, 1, 0],[0, 0, 1]], translation=[0, 0, 0]):
+    def move(self, ekf):
+
+        ekf = copy.deepcopy(ekf)
+        atual_loc = [ekf.x_m[0,0], ekf.x_m[1,0], 0]
+        atual_angulo = [0, 0, ekf.x_m[2,0]]
+        rotMatrix = get_rotation_matrix_bti(atual_angulo)
+        translation = atual_loc
+
         #print("Centro antes: "+str(self.center))
         self.center = np.dot(rotMatrix, self.center) + translation
         #print("Centro depois: "+str(self.center))
         self.inliers = np.dot(self.inliers, rotMatrix.T) + translation
         self.normal = np.dot(rotMatrix, self.normal)
 
-        self.bucket.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
-        self.bucket_pos.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+        if self.store_point_bucket:
+            self.bucket.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+            self.bucket_pos.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+
+            ekf_odom_x = copy.deepcopy(ekf.x_errado)
+            atual_loc_odom = [ekf_odom_x[0,0], ekf_odom_x[1,0], 0]
+            atual_angulo_odom = [0, 0, ekf_odom_x[2,0]]
+            rotMatrix_odom = get_rotation_matrix_bti(atual_angulo_odom)
+            tranlation_odom = atual_loc_odom
+            inlier_move_odom = np.dot(self.inliers, rotMatrix_odom.T) + tranlation_odom
+            self.bucket_odom.points = o3d.utility.Vector3dVector(np.asarray(inlier_move_odom))
 
     def append_cylinder(self, compare_feat, Z_new):
         #print("Centro antes: "+str(self.center))
@@ -217,9 +237,9 @@ class Cylinder:
             inliers_observado_corrected = compare_feat.feat.inliers - diff_feat_observada
             inliers_feature_corrected = self.bucket.points - diff
             corrected_points =np.append(inliers_feature_corrected, inliers_observado_corrected, axis=0)
-
             self.bucket.points = o3d.utility.Vector3dVector(corrected_points)
 
+            self.bucket_odom.points = o3d.utility.Vector3dVector(np.append(self.bucket_odom.points, compare_feat.feat.bucket_odom.points, axis=0))
 
         self.inliers = self.inliers + diff # não sei se os pixeis tão alinhados
 
@@ -248,8 +268,112 @@ class Cylinder:
         return [mesh_cylinder]
 
 
+    def get_high_level_feature(self):
+        self.get_best_cuboid()
+
+    def get_best_cuboid(self):
+        outlier_cloud = copy.deepcopy(self.bucket)
+        outlier_cloud.points = o3d.utility.Vector3dVector(np.asarray(outlier_cloud.points) - np.asarray(self.center))
+        nponto = np.asarray(outlier_cloud.points).shape[0]
+        o3d.visualization.draw_geometries([outlier_cloud])
+        inlier_cloud_list = []
+        plane_list = []
+        while(True):
+            
+            
+            plane_model, inliers = outlier_cloud.segment_plane(distance_threshold=0.05, ransac_n=10,num_iterations=1000)
+            plane_list.append({   "model": plane_model,
+                                  "inliers": inliers
+                              })
+            inlier_cloud_list.append(copy.deepcopy(outlier_cloud).select_by_index(inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
+            qtn_inliers = np.asarray(inliers).shape[0]
+            if(qtn_inliers < int(0.05*nponto)):
+                break
+            out = copy.deepcopy(outlier_cloud).select_by_index(inliers, invert=True)
+            points = np.asarray(out.points)
+            if(points.shape[0] < int(0.004*nponto)):
+                break
+            outlier_cloud = out
+
+        o3d.visualization.draw_geometries(inlier_cloud_list)
+
+        if len(plane_list) >= 3:
+            print("Has more then 3 elements")
+            best_ground_paralel = {"model":[0, 0, 0, 0], "inliers":[]}
+
+
+            # 1- Find best plane paralel to ground
+            for plane_item in plane_list:
+                print(plane_item['model'])
+                if plane_item["model"][2] > 0.9:
+                    if len(best_ground_paralel["inliers"]) < len(plane_item['inliers']):
+                        best_ground_paralel = plane_item
+            if not best_ground_paralel["inliers"]:
+                print("Não encontrou plano paralelo com o chão")
+
+            print("bestaralel to ground:", best_ground_paralel["model"])
+
+            # 2 -Find the model from perpendicular face
+            second_face = {"model":[0, 0, 0, 0], "inliers":[]}
+            for plane_item in plane_list:
+                if all(plane_item["model"] != best_ground_paralel["model"]):
+                    normal1 = np.asarray([best_ground_paralel["model"][0],best_ground_paralel["model"][1],best_ground_paralel["model"][2]])
+                    normal2 = np.asarray([plane_item["model"][0],plane_item["model"][1],plane_item["model"][2]])
+                    perpendicularity = np.cross(normal1,normal2)
+                    if(np.linalg.norm(perpendicularity) > 0.9):
+                        second_face = plane_item
+                        print("Encontrou segunda face")
+                        break
+            if not second_face["inliers"]:
+                print("Não tem outra face 2")
+
+            # 3 -Verify existence of a third face perpendicular to both faces
+            third_face = {"model":[0, 0, 0, 0], "inliers":[]}
+            for plane_item in plane_list:
+                if not (all(plane_item["model"] == best_ground_paralel["model"]) or all(plane_item["model"] == second_face["model"])):
+                    print("TENTOI AQUI ", plane_item["model"])
+                    normal1 = np.asarray([best_ground_paralel["model"][0],best_ground_paralel["model"][1],best_ground_paralel["model"][2]])
+                    normal2 = np.asarray([second_face["model"][0],second_face["model"][1],second_face["model"][2]])
+                    normal3 = np.asarray([plane_item["model"][0],plane_item["model"][1],plane_item["model"][2]])
+                    perpendicularity = np.cross(normal1,normal2)
+                    expected_normal3 = perpendicularity/np.linalg.norm(perpendicularity)
+                    if(np.abs(np.dot(expected_normal3, normal3)) > 0.9):
+                        third_face = plane_item
+                        print("Encontrou terceira face")
+                        break
+            if not third_face["inliers"]:
+                print("Não tem outra face 3")
+
+            if best_ground_paralel and second_face and third_face:
+                dd_plano = np.delete(np.asarray(self.bucket.points), 2, 1)
+                # Fita retângulo de menor área
+                hull_points = qhull2D(dd_plano)
+                hull_points = hull_points[::-1]
+                (rot_angle, area, width, height, center_point, corner_points) = minBoundingRect(hull_points)
+                cdepth = height
+                cwidth = width
+                crot_angle = rot_angle
+
+                mesh_box = o3d.geometry.TriangleMesh.create_box(width=cwidth, height=cdepth, depth=(self.height[1]-self.height[0]))
+                mesh_box = mesh_box.translate(np.asarray([-cwidth/2, -cdepth/2, -(self.height[1]-self.height[0])/2]))
+                mesh_box = mesh_box.rotate(get_rotation_matrix_bti([0, 0, crot_angle]), center=np.asarray([0, 0, 0]))
+                mesh_box.compute_vertex_normals()
+                mesh_box.paint_uniform_color(self.color)
+                # center the box on the frame
+                # move to the plane location
+                #mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([0, 0, 1], [0, 0, 1]), center=np.asarray([0, 0, 0]))
+                mesh_box = mesh_box.translate((self.center[0], self.center[1], self.center[2]))
+
+        
+                o3d.visualization.draw_geometries([self.bucket, mesh_box])
+
+
+
 
     def getProrieties(self):
         return {"center": self.center, "axis": self.normal,"radius": self.radius,"height": self.height,"radius_mean": self.radius_mean,
                 "radius_std": self.radius_std,"spread": self.spread,"nPoints": self.nPoints, "color": self.color, 
                 "circulation_mean":self.circulation_mean, "circulation_std":self.circulation_std }
+
+
+

@@ -44,7 +44,7 @@ nImages = len(df.index)
 transformationList = [] # Should be n-1 images
 gc = GlobalScene()
 
-add_scene = 15#150
+add_scene = 20#150
 
 last_angx = df['ang_x'].values[add_scene]
 last_angy = df['ang_y'].values[add_scene]
