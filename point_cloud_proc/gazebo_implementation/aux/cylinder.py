@@ -3,8 +3,7 @@ import numpy as np
 import random
 import copy 
 from aux.aux import *
-from aux.qhull_2d import *
-from aux.min_bounding_rect import *
+
 class Cylinder:
 
     def __init__(self):
@@ -283,7 +282,7 @@ class Cylinder:
             
             plane_model, inliers = outlier_cloud.segment_plane(distance_threshold=0.05, ransac_n=10,num_iterations=1000)
             plane_list.append({   "model": plane_model,
-                                  "inliers": inliers
+                                  "inliers": copy.deepcopy(outlier_cloud).select_by_index(inliers).points
                               })
             inlier_cloud_list.append(copy.deepcopy(outlier_cloud).select_by_index(inliers).paint_uniform_color([random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]))
             qtn_inliers = np.asarray(inliers).shape[0]
@@ -345,24 +344,68 @@ class Cylinder:
                 print("Não tem outra face 3")
 
             if best_ground_paralel and second_face and third_face:
-                dd_plano = np.delete(np.asarray(self.bucket.points), 2, 1)
                 # Fita retângulo de menor área
-                hull_points = qhull2D(dd_plano)
-                hull_points = hull_points[::-1]
-                (rot_angle, area, width, height, center_point, corner_points) = minBoundingRect(hull_points)
-                cdepth = height
-                cwidth = width
-                crot_angle = rot_angle
+                print("inlierts ",best_ground_paralel["inliers"])
 
-                mesh_box = o3d.geometry.TriangleMesh.create_box(width=cwidth, height=cdepth, depth=(self.height[1]-self.height[0]))
-                mesh_box = mesh_box.translate(np.asarray([-cwidth/2, -cdepth/2, -(self.height[1]-self.height[0])/2]))
-                mesh_box = mesh_box.rotate(get_rotation_matrix_bti([0, 0, crot_angle]), center=np.asarray([0, 0, 0]))
+                # verify which plane from cuboid has more points
+                # bigger_plane = best_ground_paralel
+                # if len(bigger_plane["inliers"]) < len(second_face["inliers"]):
+                #     bigger_plane = second_face
+
+                # if len(bigger_plane["inliers"]) < len(third_face["inliers"]):
+                #     bigger_plane = third_face
+
+                height = (self.height[1]-self.height[0])
+                print("height: ", height)
+                # (rot_angle, area, width, height, center_point, corner_points) = get_plane_segment_info(best_ground_paralel["inliers"], best_ground_paralel["model"])
+                # print("plano1 ",width, " - ", height , " inliers: ",len(best_ground_paralel["inliers"]))
+
+
+
+                # Plane 2 will have two dimensions: heigh and depth7
+                (p_rot_angle, p_area, p_width, p_height, p_center_point, p_corner_points) = get_plane_segment_info(second_face["inliers"], second_face["model"])
+                print("plano2 ",p_width, " - ", p_height , " inliers: ",len(second_face["inliers"]))
+                depth = p_height if (abs(p_width-height) < abs(p_height-height)) else p_width
+
+                # Plane 3 will have three dimentions: heigh and width
+                (p_rot_angle, p_area, p_width, p_height, p_center_point, p_corner_points) = get_plane_segment_info(third_face["inliers"], third_face["model"])
+                print("plano3 ",p_width, " - ", p_height , " inliers: ",len(third_face["inliers"]))
+                width = p_height if (abs(p_width-height) < abs(p_height-height)) else p_width
+
+
+                print("height: ", height, " depth: ", depth, " width: ", width)
+
+
+
+                # normal1 = np.asarray([best_ground_paralel["model"][0],best_ground_paralel["model"][1],best_ground_paralel["model"][2]])
+                normal2 = np.asarray([second_face["model"][0],second_face["model"][1],second_face["model"][2]])
+                normal3 = np.asarray([third_face["model"][0],third_face["model"][1],third_face["model"][2]])
+                # p1_centroid = np.mean(np.asarray(best_ground_paralel["inliers"]), axis=0)
+                p2_centroid = np.mean(np.asarray(second_face["inliers"]), axis=0)
+                p3_centroid = np.mean(np.asarray(third_face["inliers"]), axis=0)
+                print("p2_centroid: ",p2_centroid, " - p3_centroid: ", p3_centroid)
+                # encontro = get_point_between_two_lines(normal1, normal2, p1_centroid, p2_centroid)
+                # encontro2 = get_point_between_two_lines(normal1, normal3, p1_centroid, p3_centroid)
+                encontro3 = get_point_between_two_lines(normal2, normal3, p2_centroid, p3_centroid)
+                centroid = encontro3 + np.asarray(self.center)
+
+                print("CENTER: ", self.center)
+                print("centroid: ", centroid)
+
+                #print("plano2 ", self.getSizePlane(second_face["inliers"]), " inliers: ",len(second_face["inliers"]))
+                #print("plano3 ", self.getSizePlane(third_face["inliers"]), " inliers: ",len(third_face["inliers"]))
+
+
+
+                mesh_box = o3d.geometry.TriangleMesh.create_box(width=width, height=depth, depth=height)
+                mesh_box = mesh_box.translate(np.asarray([-width/2, -depth/2, -(self.height[1]-self.height[0])/2]))
+                mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([1, 0, 0],[second_face["model"][0],second_face["model"][1],second_face["model"][2]]), center=np.asarray([0, 0, 0]))
                 mesh_box.compute_vertex_normals()
                 mesh_box.paint_uniform_color(self.color)
                 # center the box on the frame
                 # move to the plane location
                 #mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([0, 0, 1], [0, 0, 1]), center=np.asarray([0, 0, 0]))
-                mesh_box = mesh_box.translate((self.center[0], self.center[1], self.center[2]))
+                mesh_box = mesh_box.translate((centroid[0], centroid[1], centroid[2]))
 
         
                 o3d.visualization.draw_geometries([self.bucket, mesh_box])

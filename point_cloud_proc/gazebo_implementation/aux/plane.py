@@ -281,7 +281,7 @@ class Plane:
         if self.store_point_bucket:
             self.bucket_pos.points = o3d.utility.Vector3dVector(np.append(self.bucket_pos.points, plano.feat.inliers, axis=0))
 
-            corrected_points =self.projected_point_into_plane(np.append(self.bucket_pos.points, plano.feat.inliers, axis=0))
+            corrected_points =aux.projected_point_into_plane(np.append(self.bucket_pos.points, plano.feat.inliers, axis=0), self.equation)
             self.bucket.points = o3d.utility.Vector3dVector(corrected_points)
 
             self.bucket_odom.points = o3d.utility.Vector3dVector(np.append(self.bucket_odom.points, plano.feat.bucket_odom.points, axis=0))
@@ -359,16 +359,6 @@ class Plane:
         inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
         return center_point, rot_angle, width, height, inliers_plano_desrotacionado
 
-
-    def projected_point_into_plane(self, points):
-        # Encontra representação 2d da projeção na normal do plano
-        inliers_plano = aux.rodrigues_rot(copy.deepcopy(points), [self.equation[0], self.equation[1], self.equation[2]], [0, 0, 1])- np.asarray([0, 0, -self.equation[3]])
-        dd_plano = np.delete(inliers_plano, 2, 1)
-        ddd_plano= np.c_[ dd_plano, np.zeros(dd_plano.shape[0]) ] + np.asarray([0, 0, -self.equation[3]])
-        # Agora ta tudo em z=0
-        inliers_plano_desrotacionado = aux.rodrigues_rot(ddd_plano, [0, 0, 1], [self.equation[0], self.equation[1], self.equation[2]])
-
-        return inliers_plano_desrotacionado
 
 
 

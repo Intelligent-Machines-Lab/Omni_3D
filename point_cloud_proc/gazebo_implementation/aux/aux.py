@@ -4,6 +4,34 @@ import random
 import copy 
 import matplotlib.pyplot as plt
 import cv2
+from aux.qhull_2d import *
+from aux.min_bounding_rect import *
+
+
+def get_plane_segment_info(points, eq):
+    dd_plano = get_2d_plane_projection(points, eq)
+
+    hull_points = qhull2D(dd_plano)
+    hull_points = hull_points[::-1]
+    
+    return minBoundingRect(hull_points) # (rot_angle, area, width, height, center_point, corner_points)
+
+def projected_point_into_plane(points, eq):
+    dd_plano = get_2d_plane_projection(points, eq)
+
+    ddd_plano= np.c_[ dd_plano, np.zeros(dd_plano.shape[0]) ] + np.asarray([0, 0, -eq[3]])
+    # Agora ta tudo em z=0
+    inliers_plano_desrotacionado = rodrigues_rot(ddd_plano, [0, 0, 1], [eq[0], eq[1], eq[2]])
+
+    return inliers_plano_desrotacionado
+
+def get_2d_plane_projection(points, eq):
+
+    inliers_plano = rodrigues_rot(copy.deepcopy(points), [eq[0], eq[1], eq[2]], [0, 0, 1])- np.asarray([0, 0, -eq[3]])
+    dd_plano = np.delete(inliers_plano, 2, 1)
+
+    return dd_plano
+
 
 def drawPlane(plane):
     #print(plane.rMatrix.T)
