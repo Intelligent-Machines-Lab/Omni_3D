@@ -257,24 +257,37 @@ class Cylinder:
 
 
     def get_geometry(self):
-        R = get_rotationMatrix_from_vectors([0, 0, 1], self.normal)
-        mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=self.radius, height=(self.height[1]-self.height[0]))
-        mesh_cylinder.compute_vertex_normals()
-        mesh_cylinder.paint_uniform_color(self.color)
-        mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
-        #print("Centro depois2: "+str(self.center))
-        mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
-        return [mesh_cylinder]
+
+        # R = get_rotationMatrix_from_vectors([0, 0, 1], self.normal)
+        # mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=self.radius, height=(self.height[1]-self.height[0]))
+        # mesh_cylinder.compute_vertex_normals()
+        # mesh_cylinder.paint_uniform_color(self.color)
+        # mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
+        # #print("Centro depois2: "+str(self.center))
+        # mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
+        status, mesh = self.get_high_level_feature()
+        return [mesh]
 
 
     def get_high_level_feature(self):
-        self.get_best_cuboid()
+        status, mesh = self.get_best_cuboid()
+        if not status:
+            R = get_rotationMatrix_from_vectors([0, 0, 1], self.normal)
+            mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=self.radius, height=(self.height[1]-self.height[0]))
+            mesh_cylinder.compute_vertex_normals()
+            mesh_cylinder.paint_uniform_color(self.color)
+            mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
+            #print("Centro depois2: "+str(self.center))
+            mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
+            return True, mesh_cylinder
+        else:
+            return status, mesh
 
     def get_best_cuboid(self):
         outlier_cloud = copy.deepcopy(self.bucket)
         outlier_cloud.points = o3d.utility.Vector3dVector(np.asarray(outlier_cloud.points) - np.asarray(self.center))
         nponto = np.asarray(outlier_cloud.points).shape[0]
-        o3d.visualization.draw_geometries([outlier_cloud])
+        #o3d.visualization.draw_geometries([outlier_cloud])
         inlier_cloud_list = []
         plane_list = []
         while(True):
@@ -294,7 +307,7 @@ class Cylinder:
                 break
             outlier_cloud = out
 
-        o3d.visualization.draw_geometries(inlier_cloud_list)
+        #o3d.visualization.draw_geometries(inlier_cloud_list)
 
         if len(plane_list) >= 3:
             print("Has more then 3 elements")
@@ -309,6 +322,7 @@ class Cylinder:
                         best_ground_paralel = plane_item
             if not best_ground_paralel["inliers"]:
                 print("Não encontrou plano paralelo com o chão")
+                return False, []
 
             print("bestaralel to ground:", best_ground_paralel["model"])
 
@@ -325,6 +339,7 @@ class Cylinder:
                         break
             if not second_face["inliers"]:
                 print("Não tem outra face 2")
+                return False, []
 
             # 3 -Verify existence of a third face perpendicular to both faces
             third_face = {"model":[0, 0, 0, 0], "inliers":[]}
@@ -342,6 +357,7 @@ class Cylinder:
                         break
             if not third_face["inliers"]:
                 print("Não tem outra face 3")
+                return False, []
 
             if best_ground_paralel and second_face and third_face:
                 # Fita retângulo de menor área
@@ -408,9 +424,10 @@ class Cylinder:
                 mesh_box = mesh_box.translate((centroid[0], centroid[1], centroid[2]))
 
         
-                o3d.visualization.draw_geometries([self.bucket, mesh_box])
-
-
+                #o3d.visualization.draw_geometries([self.bucket, mesh_box])
+                return True, mesh_box
+        else:
+            return False, []
 
 
     def getProrieties(self):

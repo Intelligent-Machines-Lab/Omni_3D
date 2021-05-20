@@ -72,7 +72,6 @@ class GlobalScene:
         if(save_image):
             vis_original.capture_screen_image("animations/original-"+str(self.iatual)+".png")
 
-
         feat = self.lc_atual.getMainPlanes()
         feat.extend(self.lc_atual.getCylinders(showPointCloud=False))
         feat.extend(self.lc_atual.getSecundaryPlanes())
@@ -87,6 +86,26 @@ class GlobalScene:
         vis_feature.update_renderer()
         if(save_image):
             vis_feature.capture_screen_image("animations/feature-"+str(self.iatual)+".png")
+
+        global_bucket = []
+        vis_feature_point = o3d.visualization.Visualizer()
+        vis_feature_point.create_window(window_name='Feature point', width=960, height=540, left=0, top=540)
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Plane):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket)
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.bucket)
+        for x in range(len(global_bucket)):
+            vis_feature_point.add_geometry(global_bucket[x])
+        vis_feature_point.get_view_control().rotate(0, rotatey)
+        vis_feature_point.get_view_control().rotate(rotatex, 0)
+        vis_feature_point.get_view_control().rotate(0, rotatey2*2)
+        vis_feature_point.poll_events()
+        vis_feature_point.update_renderer()
+        if(save_image):
+            vis_feature_point.capture_screen_image("animations/global-"+str(self.iatual)+".png")
 
 
         vis_feature_global = o3d.visualization.Visualizer()
@@ -117,6 +136,22 @@ class GlobalScene:
                 if not vis_feature.poll_events():
                     break
                 vis_feature.update_renderer()
+
+                global_bucket = []
+                for x in range(len(self.features_objects)):
+                    if isinstance(self.features_objects[x].feat,Plane):
+                        self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                        global_bucket.append(self.features_objects[x].feat.bucket)
+                    elif isinstance(self.features_objects[x].feat,Cylinder):
+                        self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                        global_bucket.append(self.features_objects[x].feat.bucket)
+
+                for x in range(len(global_bucket)):
+                    vis_feature_point.update_geometry(global_bucket[x])
+                if not vis_feature_point.poll_events():
+                    break
+                vis_feature_point.update_renderer()
+
                 #vis_feature.capture_screen_image("animations/feature-"+str(self.iatual)+".png")
                 for x in range(len(self.fet_geo)):
                     vis_feature_global.update_geometry(self.fet_geo[x])
@@ -125,9 +160,12 @@ class GlobalScene:
                 vis_feature_global.update_renderer()
                 #vis_feature_global.capture_screen_image("animations/global-"+str(self.iatual)+".png")
 
+
+
         vis_feature_global.destroy_window()
         vis_original.destroy_window()
         vis_feature.destroy_window()
+        vis_feature_point.destroy_window()
 
     # def draw_geometries_pick_points(self, geometries):
     #     vis = o3d.visualization.VisualizerWithEditing()
@@ -546,7 +584,7 @@ class GlobalScene:
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=100):#126):
+        if(i >=0):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')
@@ -560,7 +598,7 @@ class GlobalScene:
         self.ekf.save_file()
         
 
-        self.showPoints()
+        #self.showPoints()
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)
         f.close()
