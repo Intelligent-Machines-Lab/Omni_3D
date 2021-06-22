@@ -584,7 +584,7 @@ class GlobalScene:
         self.fet_geo.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0]).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc))
 
         #ls.custom_draw_geometry()
-        if(i >=0):#126):
+        if(i >=100):#126):
             threading.Thread(target=self.custom_draw_geometry, daemon=True).start()
             #fig = plt.figure()
             #ax = fig.add_subplot(111, projection='3d')
@@ -598,7 +598,7 @@ class GlobalScene:
         self.ekf.save_file()
         
 
-        #self.showPoints()
+        self.showPoints()
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)
         f.close()
@@ -673,6 +673,30 @@ class GlobalScene:
             elif isinstance(self.features_objects[x].feat,Cylinder):
                 self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
                 global_bucket.append(self.features_objects[x].feat.bucket)
+
+        o3d.visualization.draw_geometries(global_bucket)
+
+
+        global_bucket = []
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Plane):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.get_octree())
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.get_octree())
+
+        o3d.visualization.draw_geometries(global_bucket)
+
+
+        global_bucket = []
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Plane):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.getVoxelStructure())
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                global_bucket.append(self.features_objects[x].feat.getVoxelStructure())
 
         o3d.visualization.draw_geometries(global_bucket)
 

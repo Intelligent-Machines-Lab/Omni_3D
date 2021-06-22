@@ -268,6 +268,13 @@ class Cylinder:
         status, mesh = self.get_high_level_feature()
         return [mesh]
 
+    def get_octree(self):
+        octree = o3d.geometry.Octree(max_depth=5)
+        octree.convert_from_point_cloud(copy.deepcopy(self.bucket), size_expand=0.01)
+        return octree
+
+    def getVoxelStructure(self):
+        return o3d.geometry.VoxelGrid.create_from_point_cloud(copy.deepcopy(self.bucket), voxel_size=0.2)
 
     def get_high_level_feature(self):
         status, mesh = self.get_best_cuboid()

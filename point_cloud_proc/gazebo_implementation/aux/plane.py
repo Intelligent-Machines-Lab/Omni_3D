@@ -258,6 +258,14 @@ class Plane:
         pcd.points = o3d.utility.Vector3dVector(self.points_main)
         return [mesh_box, pcd]
 
+    def get_octree(self):
+        octree = o3d.geometry.Octree(max_depth=5)
+        octree.convert_from_point_cloud(copy.deepcopy(self.bucket), size_expand=0.01)
+        return octree
+
+    def getVoxelStructure(self):
+        return o3d.geometry.VoxelGrid.create_from_point_cloud(copy.deepcopy(self.bucket), voxel_size=0.2)
+
 
     def append_plane(self, plano, neweq = [], nvezes=0):
 
