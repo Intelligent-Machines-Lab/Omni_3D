@@ -8,6 +8,16 @@ from aux.qhull_2d import *
 from aux.min_bounding_rect import *
 
 
+def get_voxel_vis_from_octree(octree):
+    print("converteu")
+    voxel_grid = octree.to_voxel_grid()
+    octree_copy = voxel_grid.to_octree(max_depth=5)
+    o3d.visualization.draw_geometries([octree])
+    o3d.visualization.draw_geometries([voxel_grid])
+    o3d.visualization.draw_geometries([octree_copy])
+    return octree.to_voxel_grid()
+
+
 def get_plane_segment_info(points, eq):
     dd_plano = get_2d_plane_projection(points, eq)
 
