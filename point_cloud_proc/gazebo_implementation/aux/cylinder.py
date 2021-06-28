@@ -17,6 +17,8 @@ class Cylinder:
         self.circulation_std = 0
 
         self.store_point_bucket = True
+        self.store_octree_model = True
+        self.store_voxel_grid_model = True
 
         self.bucket = o3d.geometry.PointCloud()
         self.bucket.points = o3d.utility.Vector3dVector([])
@@ -26,6 +28,9 @@ class Cylinder:
 
         self.bucket_odom = o3d.geometry.PointCloud()
         self.bucket_odom.points = o3d.utility.Vector3dVector([])
+
+        self.octree_model = o3d.geometry.Octree(max_depth=4).convert_from_point_cloud(o3d.geometry.PointCloud())
+        self.voxel_grid_model = o3d.geometry.VoxelGrid()
 
 
     def find(self, pts, thresh=0.2, minPoints=50, maxIteration=5000, useRANSAC = True, forceAxisVector = []):
@@ -223,6 +228,15 @@ class Cylinder:
             inlier_move_odom = np.dot(self.inliers, rotMatrix_odom.T) + tranlation_odom
             self.bucket_odom.points = o3d.utility.Vector3dVector(np.asarray(inlier_move_odom))
 
+        if self.store_octree_model:
+            self.octree_model = o3d.geometry.Octree(max_depth=4)
+            pcd_pre_octree = o3d.geometry.PointCloud()
+            pcd_pre_octree.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+            pcd_pre_octree.paint_uniform_color(self.color)
+            self.octree_model.convert_from_point_cloud(pcd_pre_octree, size_expand=0.01)
+
+        
+
     def append_cylinder(self, compare_feat, Z_new):
         #print("Centro antes: "+str(self.center))
         diff = np.asarray(self.center) - np.asarray([Z_new[0,0], Z_new[1,0], Z_new[2,0]])
@@ -239,6 +253,11 @@ class Cylinder:
             self.bucket.points = o3d.utility.Vector3dVector(corrected_points)
 
             self.bucket_odom.points = o3d.utility.Vector3dVector(np.append(self.bucket_odom.points, compare_feat.feat.bucket_odom.points, axis=0))
+
+        if self.store_octree_model:
+            diff_feat_observada = np.asarray(compare_feat.feat.center) - np.asarray([Z_new[0,0], Z_new[1,0], Z_new[2,0]])
+            inliers_observado_corrected = compare_feat.feat.inliers - diff_feat_observada
+            inliers_feature_corrected = self.bucket.points - diff
 
         self.inliers = self.inliers + diff # não sei se os pixeis tão alinhados
 
@@ -269,9 +288,9 @@ class Cylinder:
         return [mesh]
 
     def get_octree(self):
-        octree = o3d.geometry.Octree(max_depth=5)
-        octree.convert_from_point_cloud(copy.deepcopy(self.bucket), size_expand=0.01)
-        return octree
+        #octree = o3d.geometry.Octree(max_depth=5)
+        #octree.convert_from_point_cloud(copy.deepcopy(self.bucket), size_expand=0.01)
+        return self.octree_model
 
     def getVoxelStructure(self):
         return o3d.geometry.VoxelGrid.create_from_point_cloud(copy.deepcopy(self.bucket), voxel_size=0.2)

@@ -701,17 +701,6 @@ class GlobalScene:
         o3d.visualization.draw_geometries(global_bucket)
 
 
-        global_bucket = []
-        for x in range(len(self.features_objects)):
-            if isinstance(self.features_objects[x].feat,Plane):
-                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
-                global_bucket.append(get_voxel_vis_from_octree(self.features_objects[x].feat.get_octree()))
-            elif isinstance(self.features_objects[x].feat,Cylinder):
-                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
-                global_bucket.append(get_voxel_vis_from_octree(self.features_objects[x].feat.get_octree()))
-
-        o3d.visualization.draw_geometries(global_bucket)
-
 
         for x in range(len(self.features_objects)):
             if isinstance(self.features_objects[x].feat,Cylinder):
