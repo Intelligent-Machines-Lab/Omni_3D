@@ -73,6 +73,11 @@ class GlobalScene:
         self.memLogger.define_log("only_voxel_grid_open3d")
         self.memLogger.define_log("only_voxel_grid_open3d_colorless")
 
+        self.memLogger.define_log("low_level_world")
+        self.memLogger.define_log("low_level_world_colorless")
+        self.memLogger.define_log("high_level_world")
+        self.memLogger.define_log("high_level_world_colorless")
+
 
     def get_feature_from_id(self, id):
         for i_global in self.features_objects:
@@ -620,8 +625,11 @@ class GlobalScene:
 
         self.ekf.save_file()
         
+        if(i >=60):
+            self.showPoints(True)
+        else:
+            self.showPoints(False)
 
-        self.showPoints()
         f = open('feat.pckl', 'wb')
         pickle.dump(self.getProprieties(), f)
         f.close()
@@ -667,8 +675,8 @@ class GlobalScene:
 
     
 
-    def showPoints(self):
-        self.memLogger.next()
+    def showPoints(self, show=True):
+        
         
 
         global_bucket = []
@@ -679,7 +687,9 @@ class GlobalScene:
             elif isinstance(self.features_objects[x].feat,Cylinder):
                 self.features_objects[x].feat.bucket_odom.paint_uniform_color(self.features_objects[x].feat.color)
                 global_bucket.append(self.features_objects[x].feat.bucket_odom)
-        o3d.visualization.draw_geometries(global_bucket)
+
+        if show:
+            o3d.visualization.draw_geometries(global_bucket)
 
         global_bucket = []
         for x in range(len(self.features_objects)):
@@ -689,7 +699,9 @@ class GlobalScene:
             elif isinstance(self.features_objects[x].feat,Cylinder):
                 self.features_objects[x].feat.bucket_pos.paint_uniform_color(self.features_objects[x].feat.color)
                 global_bucket.append(self.features_objects[x].feat.bucket_pos)
-        o3d.visualization.draw_geometries(global_bucket)
+        
+        if show:
+            o3d.visualization.draw_geometries(global_bucket)
 
 
 
@@ -714,7 +726,8 @@ class GlobalScene:
             data_log_colorless[self.features_objects[x].id] = mem_usage_colorless
             data_log_colorless['total'] = data_log_colorless['total'] + mem_usage_colorless
 
-        o3d.visualization.draw_geometries(global_bucket)
+        if show:
+            o3d.visualization.draw_geometries(global_bucket)
         self.memLogger.log("pcd", data_log)
         self.memLogger.log("pcd_colorless", data_log_colorless)
 
@@ -756,8 +769,9 @@ class GlobalScene:
             mem_usage_colorless = get_mem_octree(f_octree)['mem_size_colorless']
             data_log_open3d_colorless[self.features_objects[x].id] = mem_usage_colorless
             data_log_open3d_colorless['total'] = data_log_open3d_colorless['total'] + mem_usage_colorless
-
-        o3d.visualization.draw_geometries(global_bucket)
+        
+        if show:
+            o3d.visualization.draw_geometries(global_bucket)
         self.memLogger.log("octree", data_log)
         self.memLogger.log("octree_colorless", data_log_colorless)
         self.memLogger.log("octree_open3d", data_log_open3d)
@@ -803,7 +817,8 @@ class GlobalScene:
             data_log_open3d_colorless[self.features_objects[x].id] = mem_usage_colorless
             data_log_open3d_colorless['total'] = data_log_open3d_colorless['total'] + mem_usage_colorless
 
-        o3d.visualization.draw_geometries(global_bucket)
+        if show:
+            o3d.visualization.draw_geometries(global_bucket)
         self.memLogger.log("voxel_grid", data_log)
         self.memLogger.log("voxel_grid_colorless", data_log_colorless)
         self.memLogger.log("voxel_grid_open3d", data_log_open3d)
@@ -835,7 +850,9 @@ class GlobalScene:
                 print("apendando", np.append(pt_antigo, pt_novo, axis=0))
                 pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
                 pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
-        o3d.visualization.draw_geometries([pcd_map])
+        
+        if show:
+            o3d.visualization.draw_geometries([pcd_map])
 
 
 
@@ -877,7 +894,8 @@ class GlobalScene:
         data_log_open3d['total'] = get_mem_octree(octree)['mem_size']
         data_log_open3d_colorless['total'] = get_mem_octree(octree)['mem_size_colorless']
 
-        o3d.visualization.draw_geometries([octree])
+        if show:
+            o3d.visualization.draw_geometries([octree])
         self.memLogger.log("only_octree", data_log)
         self.memLogger.log("only_octree_colorless", data_log_colorless)
         self.memLogger.log("only_octree_open3d", data_log_open3d)
@@ -917,15 +935,87 @@ class GlobalScene:
         data_log_open3d['total'] = get_mem_voxel_grid(voxel_grid)['mem_size']
         data_log_open3d_colorless['total'] = get_mem_voxel_grid(voxel_grid)['mem_size_colorless']
 
-        o3d.visualization.draw_geometries([voxel_grid])
+        if show:
+            o3d.visualization.draw_geometries([voxel_grid])
         self.memLogger.log("only_voxel_grid", data_log)
         self.memLogger.log("only_voxel_grid_colorless", data_log_colorless)
         self.memLogger.log("only_voxel_grid_open3d", data_log_open3d)
         self.memLogger.log("only_voxel_grid_open3d_colorless", data_log_open3d_colorless)
 
+
+
+        # Low level world:
+        data_log = {'total':0}
+        data_log_colorless = {'total':0}
+        global_bucket = []
         for x in range(len(self.features_objects)):
-            if isinstance(self.features_objects[x].feat,Cylinder):
-                self.features_objects[x].feat.get_high_level_feature()
+            if isinstance(self.features_objects[x].feat,Plane):
+                global_bucket.append(self.features_objects[x].feat.get_geometry()[0])
+                
+                data_log[self.features_objects[x].id] = get_mem_feature("plane")['mem_size']
+                data_log['total'] = data_log['total'] + get_mem_feature("plane")['mem_size']
+                data_log_colorless[self.features_objects[x].id] = get_mem_feature("plane")['mem_size_colorless']
+                data_log_colorless['total'] = data_log_colorless['total'] + get_mem_feature("plane")['mem_size_colorless']
+
+
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                global_bucket.append(self.features_objects[x].feat.get_geometry()[0])
+
+                data_log[self.features_objects[x].id] = get_mem_feature("cylinder")['mem_size']
+                data_log['total'] = data_log['total'] + get_mem_feature("cylinder")['mem_size']
+                data_log_colorless[self.features_objects[x].id] = get_mem_feature("cylinder")['mem_size_colorless']
+                data_log_colorless['total'] = data_log_colorless['total'] + get_mem_feature("cylinder")['mem_size_colorless']
+        
+        if show:
+            o3d.visualization.draw_geometries(global_bucket)
+        self.memLogger.log("low_level_world", data_log)
+        self.memLogger.log("low_level_world_colorless", data_log_colorless)
+
+
+
+
+        # High level world:
+        global_bucket = []
+        data_log = {'total':0}
+        data_log_colorless = {'total':0}
+        for x in range(len(self.features_objects)):
+            if isinstance(self.features_objects[x].feat,Plane):
+                global_bucket.append(self.features_objects[x].feat.get_geometry()[0])
+
+                data_log[self.features_objects[x].id] = get_mem_feature("plane")['mem_size']
+                data_log['total'] = data_log['total'] + get_mem_feature("plane")['mem_size']
+                data_log_colorless[self.features_objects[x].id] = get_mem_feature("plane")['mem_size_colorless']
+                data_log_colorless['total'] = data_log_colorless['total'] + get_mem_feature("plane")['mem_size_colorless']
+
+            elif isinstance(self.features_objects[x].feat,Cylinder):
+                high_level_feature, mesh = self.features_objects[x].feat.get_high_level_feature()
+                if high_level_feature == 'cuboid':
+                    data_log[self.features_objects[x].id] = get_mem_feature("cuboid")['mem_size']
+                    data_log['total'] = data_log['total'] + get_mem_feature("cuboid")['mem_size']
+                    data_log_colorless[self.features_objects[x].id] = get_mem_feature("cuboid")['mem_size_colorless']
+                    data_log_colorless['total'] = data_log_colorless['total'] + get_mem_feature("cuboid")['mem_size_colorless']
+                elif high_level_feature == 'cylinder':
+                    data_log[self.features_objects[x].id] = get_mem_feature("cylinder")['mem_size']
+                    data_log['total'] = data_log['total'] + get_mem_feature("cylinder")['mem_size']
+                    data_log_colorless[self.features_objects[x].id] = get_mem_feature("cylinder")['mem_size_colorless']
+                    data_log_colorless['total'] = data_log_colorless['total'] + get_mem_feature("cylinder")['mem_size_colorless']
+                else:
+                    data_log[self.features_objects[x].id] = get_mem_pcd(self.features_objects[x].feat.bucket)['mem_size']
+                    data_log['total'] = data_log['total'] + get_mem_pcd(self.features_objects[x].feat.bucket)['mem_size']
+                    data_log_colorless[self.features_objects[x].id] = get_mem_pcd(self.features_objects[x].feat.bucket)['mem_size_colorless']
+                    data_log_colorless['total'] = data_log_colorless['total'] + get_mem_pcd(self.features_objects[x].feat.bucket)['mem_size_colorless']
+                global_bucket.append(mesh)
+        
+        if show:
+            o3d.visualization.draw_geometries(global_bucket)
+        self.memLogger.log("high_level_world", data_log)
+        self.memLogger.log("high_level_world_colorless", data_log_colorless)
+
+        self.memLogger.next()
+        self.memLogger.save_as_json()
+        # for x in range(len(self.features_objects)):
+        #     if isinstance(self.features_objects[x].feat,Cylinder):
+        #         self.features_objects[x].feat.get_high_level_feature()
 
 
         # global_bucket = []

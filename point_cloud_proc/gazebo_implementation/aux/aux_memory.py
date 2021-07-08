@@ -2,6 +2,9 @@ import open3d as o3d
 import numpy as np
 import random
 import copy 
+import json
+import pickle
+import scipy
 
 def get_mem_voxel_grid(voxel_grid, method="open3d"):
     #memq = voxel_grid.get_mem_size()
@@ -103,4 +106,15 @@ class Mem_log_cointainer:
     def log(self, name, data_to_store):
         self.dict_log[name][self.step] = data_to_store
 
-        print("self.dict_log", self.dict_log)
+    def save_as_json(self):
+        with open('memory_log.json', 'w') as fp:
+            json.dump(self.dict_log, fp)
+
+    def save_as_pickle(self):
+        with open('memory_log.p', 'wb') as fp:
+            pickle.dump(self.dict_log, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def save_as_matlab(self):
+        fname = "memory_log_matlab" # arbitrary filename
+        scipy.io.savemat(fname, self.dict_log)
+
