@@ -29,6 +29,8 @@ class Cylinder:
         self.bucket_odom = o3d.geometry.PointCloud()
         self.bucket_odom.points = o3d.utility.Vector3dVector([])
 
+        self.high_level_definition = {}
+
         # self.octree_model = o3d.geometry.Octree(max_depth=4).convert_from_point_cloud(o3d.geometry.PointCloud())
         # self.voxel_grid_model = o3d.geometry.VoxelGrid()
 
@@ -277,27 +279,20 @@ class Cylinder:
 
     # return only the generic cylinder
     def get_geometry(self):
-
-        # R = get_rotationMatrix_from_vectors([0, 0, 1], self.normal)
-        # mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=self.radius, height=(self.height[1]-self.height[0]))
-        # mesh_cylinder.compute_vertex_normals()
-        # mesh_cylinder.paint_uniform_color(self.color)
-        # mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
-        # #print("Centro depois2: "+str(self.center))
-        # mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
-        status, mesh, = self.get_cylinder()
+        mesh = self.get_mesh_cylinder()
         return [mesh]
 
-    def get_cylinder(self):
-        R = get_rotationMatrix_from_vectors([0, 0, 1], self.normal)
-        mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=self.radius, height=(self.height[1]-self.height[0]))
-        mesh_cylinder.compute_vertex_normals()
-        mesh_cylinder.paint_uniform_color(self.color)
-        mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
-        #print("Centro depois2: "+str(self.center))
-        mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
+
+    def try_cylinder(self):
         status = self.verify_cylinder()
+        mesh_cylinder = []
+        if status:
+            mesh_cylinder = self.get_mesh_cylinder()
         return status, mesh_cylinder
+
+    def try_cuboid(self):
+        status, mesh_cuboid = self.get_best_cuboid()
+        return status, mesh_cuboid
 
     def verify_cylinder(self):
         percentage_std_radius = 0.1
@@ -314,6 +309,8 @@ class Cylinder:
         radius_std = radius_std
         spread = radius_std/radius_mean
 
+        #circ, mean = self.calculatePlanification_HighLevel(True)
+
 
 
         cylinder_condition = True
@@ -321,28 +318,46 @@ class Cylinder:
         
         #cylinder_condition = cylinder_condition and (cylinder.circulation_mean > self.circulation_cylinder)
         cylinder_condition = cylinder_condition and (radius_std/radius_mean < percentage_std_radius)
+        if cylinder_condition:
+            self.high_level_definition ={
+                        'feature' : 'cylinder',
+                    }
         return cylinder_condition
 
-    def get_octree(self):
-        octree = o3d.geometry.Octree(max_depth=5)
-        octree.convert_from_point_cloud(copy.deepcopy(self.bucket), size_expand=0.01)
+    def get_octree(self, depth=5, expantion=0):
+        octree = o3d.geometry.Octree(max_depth=depth)
+        octree.convert_from_point_cloud(copy.deepcopy(self.bucket), size_expand=expantion)
         return octree
 
-    def getVoxelStructure(self):
-        return o3d.geometry.VoxelGrid.create_from_point_cloud(copy.deepcopy(self.bucket), voxel_size=0.2)
+    def getVoxelStructure(self, voxel_size=0.2):
+        return o3d.geometry.VoxelGrid.create_from_point_cloud(copy.deepcopy(self.bucket), voxel_size=voxel_size)
 
     # Can return point-cloud, cuboid or cylinder
     # point-cloud = indecision
     def get_high_level_feature(self):
-        cub_status, mesh = self.get_best_cuboid()
-        if not cub_status:
-            cyl_status, mesh = self.get_cylinder()
-            if not cyl_status:
-                return "pcd", self.bucket
+
+        # Verify if already previously defined
+        if "feature" in self.high_level_definition:
+            if self.high_level_definition['feature'] == 'cylinder':
+                feat = 'cylinder'
+                mesh = self.get_mesh_cylinder()
+            elif self.high_level_definition['feature'] == 'cuboid':
+                feat = 'cuboid'
+                mesh = self.get_mesh_cuboid()
             else:
-                return "cylinder", mesh
+                print("undefined feature")
+
+            return feat, mesh
         else:
-            return "cuboid", mesh
+            cub_status, mesh = self.try_cuboid()
+            if not cub_status:
+                cyl_status, mesh = self.try_cylinder()
+                if not cyl_status:
+                    return "pcd", self.bucket
+                else:
+                    return "cylinder", mesh
+            else:
+                return "cuboid", mesh
 
     def get_best_cuboid(self):
         outlier_cloud = copy.deepcopy(self.bucket)
@@ -474,17 +489,27 @@ class Cylinder:
                     #print("plano2 ", self.getSizePlane(second_face["inliers"]), " inliers: ",len(second_face["inliers"]))
                     #print("plano3 ", self.getSizePlane(third_face["inliers"]), " inliers: ",len(third_face["inliers"]))
 
+                    self.high_level_definition ={
+                        'feature' : 'cuboid',
+                        'width' : width,
+                        'height' : depth,
+                        'depth' : height,
+                        'encontro_linhas' : encontro3,
+                        'face_rotation_vector' : [second_face["model"][0],second_face["model"][1],second_face["model"][2]]
 
+                    }
 
-                    mesh_box = o3d.geometry.TriangleMesh.create_box(width=width, height=depth, depth=height)
-                    mesh_box = mesh_box.translate(np.asarray([-width/2, -depth/2, -(self.height[1]-self.height[0])/2]))
-                    mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([1, 0, 0],[second_face["model"][0],second_face["model"][1],second_face["model"][2]]), center=np.asarray([0, 0, 0]))
-                    mesh_box.compute_vertex_normals()
-                    mesh_box.paint_uniform_color(self.color)
-                    # center the box on the frame
-                    # move to the plane location
-                    #mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([0, 0, 1], [0, 0, 1]), center=np.asarray([0, 0, 0]))
-                    mesh_box = mesh_box.translate((centroid[0], centroid[1], centroid[2]))
+                    mesh_box = self.get_mesh_cuboid()
+
+                    # mesh_box = o3d.geometry.TriangleMesh.create_box(width=width, height=depth, depth=height)
+                    # mesh_box = mesh_box.translate(np.asarray([-width/2, -depth/2, -(self.height[1]-self.height[0])/2]))
+                    # mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([1, 0, 0],[second_face["model"][0],second_face["model"][1],second_face["model"][2]]), center=np.asarray([0, 0, 0]))
+                    # mesh_box.compute_vertex_normals()
+                    # mesh_box.paint_uniform_color(self.color)
+                    # # center the box on the frame
+                    # # move to the plane location
+                    # #mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([0, 0, 1], [0, 0, 1]), center=np.asarray([0, 0, 0]))
+                    # mesh_box = mesh_box.translate((centroid[0], centroid[1], centroid[2]))
 
             
                     #o3d.visualization.draw_geometries([self.bucket, mesh_box])
@@ -493,6 +518,73 @@ class Cylinder:
                 return False, []
         else:
             return False,[]
+
+    def get_mesh_cuboid(self):
+        mesh_box = o3d.geometry.TriangleMesh.create_box(width=self.high_level_definition['width'], height=self.high_level_definition['height'], depth=self.high_level_definition['depth'])
+        mesh_box = mesh_box.translate(np.asarray([-self.high_level_definition['width']/2, -self.high_level_definition['height']/2, -(self.height[1]-self.height[0])/2]))
+        mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([1, 0, 0],self.high_level_definition['face_rotation_vector']), center=np.asarray([0, 0, 0]))
+        mesh_box.compute_vertex_normals()
+        mesh_box.paint_uniform_color(self.color)
+        centroid = self.high_level_definition['encontro_linhas'] + np.asarray(self.center)
+        # center the box on the frame
+        # move to the plane location
+        #mesh_box = mesh_box.rotate(get_rotationMatrix_from_vectors([0, 0, 1], [0, 0, 1]), center=np.asarray([0, 0, 0]))
+        mesh_box = mesh_box.translate((centroid[0], centroid[1], centroid[2]))
+        return mesh_box
+
+    def get_mesh_cylinder(self):
+        R = get_rotationMatrix_from_vectors([0, 0, 1], self.normal)
+        mesh_cylinder = o3d.geometry.TriangleMesh.create_cylinder(radius=self.radius, height=(self.height[1]-self.height[0]))
+        mesh_cylinder.compute_vertex_normals()
+        mesh_cylinder.paint_uniform_color(self.color)
+        mesh_cylinder = mesh_cylinder.rotate(R, center=[0, 0, 0])
+        #print("Centro depois2: "+str(self.center))
+        mesh_cylinder = mesh_cylinder.translate((self.center[0], self.center[1], self.center[2]))
+        return mesh_cylinder
+
+    # def calculatePlanification_HighLevel(self, showNormal=True):
+    #     pcd = copy.deepcopy(self.bucket)
+    #     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=500))
+    #     pcd.orient_normals_towards_camera_location()
+    #     pcd.normalize_normals()
+
+    #     nponto = np.asarray(pcd.points).shape[0]
+
+    #     normals = np.asarray(copy.deepcopy(pcd.normals))
+    #     vecC_stakado =  np.stack([self.normal]*nponto,0)
+
+    #     # Projection of normal in the plane from which the normal is the axis
+    #     # https://stackoverflow.com/questions/35090401/how-to-calculate-the-dot-product-of-two-arrays-of-vectors-in-python
+    #     # Same as:
+    #     # # First calculate the axis https://www.maplesoft.com/support/help/Maple/view.aspx?path=MathApps/ProjectionOfVectorOntoPlane
+    #     # # projNormal = np.dot((np.dot(centroid, forceAxisVector)/(np.linalg.norm(forceAxisVector)**2)), forceAxisVector)
+    #     un = (normals*vecC_stakado).sum(1)
+    #     m_nn_m = np.linalg.norm(self.normal)**2
+    #     unn = (un*np.asarray(self.normal)[:,np.newaxis]).T
+    #     projNormal = normals - np.divide(unn,m_nn_m)
+    #     pcd.normals = o3d.utility.Vector3dVector(projNormal)
+    #     #pcd.normalize_normals()
+
+    #     pcd2 = copy.deepcopy(pcd)
+
+    #     # Calculate vector perpenticular from axis to point
+    #     dist_pt = np.cross(vecC_stakado, (self.center-np.asarray(pcd.points)))
+    #     dist_pt = dist_pt / np.linalg.norm(dist_pt)
+
+    #     # If they are orthogonal, means they are aligned, high values are planes
+    #     circulation = np.cross(dist_pt, projNormal)
+    #     circulation_abs = np.linalg.norm(circulation, axis=1)
+    #     circulation_mean = np.mean(circulation_abs)
+    #     circulation_std = np.std(circulation_abs)
+
+    #     print(circulation_mean)
+
+    #     pcd2.normals = o3d.utility.Vector3dVector(dist_pt*10)
+    #     #pcd2.normalize_normals()
+    #     if(showNormal):
+    #         o3d.visualization.draw_geometries([pcd, pcd2], point_show_normal=True)
+        
+    #     return circulation_mean, circulation_std
 
     def getProrieties(self):
         return {"center": self.center, "axis": self.normal,"radius": self.radius,"height": self.height,"radius_mean": self.radius_mean,

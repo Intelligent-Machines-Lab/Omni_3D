@@ -4,7 +4,7 @@ import random
 import copy 
 import json
 import pickle
-import scipy
+import scipy.io
 
 def get_mem_voxel_grid(voxel_grid, method="open3d"):
     #memq = voxel_grid.get_mem_size()

@@ -78,6 +78,11 @@ class GlobalScene:
         self.memLogger.define_log("high_level_world")
         self.memLogger.define_log("high_level_world_colorless")
 
+        self.memLogger.define_log("voxel_grid_truncate")
+        self.memLogger.define_log("octree_truncate")
+
+        self.memLogger.define_log("only_voxel_grid_truncate")
+        self.memLogger.define_log("only_octree_truncate")
 
     def get_feature_from_id(self, id):
         for i_global in self.features_objects:
@@ -735,96 +740,121 @@ class GlobalScene:
 
 
 
+        # fixed_voxel_cize
+        global_bucket_octree = []
+        global_bucket_voxel_grid = []
 
+        data_log_voxel_grid = {'total':0}
+        data_log_voxel_grid_colorless = {'total':0}
+        data_log_voxel_grid_open3d = {'total':0}
+        data_log_voxel_grid_open3d_colorless = {'total':0}
 
+        data_log_octree = {'total':0}
+        data_log_octree_colorless = {'total':0}
+        data_log_octree_open3d = {'total':0}
+        data_log_octree_open3d_colorless = {'total':0}
 
-        data_log = {'total':0}
-        data_log_colorless = {'total':0}
-        data_log_open3d = {'total':0}
-        data_log_open3d_colorless = {'total':0}
-
-        global_bucket = []
         for x in range(len(self.features_objects)):
-            if isinstance(self.features_objects[x].feat,Plane):
-                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
-                global_bucket.append(self.features_objects[x].feat.get_octree())
-            elif isinstance(self.features_objects[x].feat,Cylinder):
-                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
-                global_bucket.append(self.features_objects[x].feat.get_octree())
+            self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
 
             f_octree = self.features_objects[x].feat.get_octree()
+            globalsize = f_octree.size
+            cell_size = 0.2
+            perfect_depth = np.log2(globalsize/cell_size)
+            rounded_depth = int(np.ceil(perfect_depth))
+            final_estimated_size = (cell_size*2**rounded_depth)
+            factor = final_estimated_size/globalsize -1
 
-            mem_usage = get_mem_octree(f_octree, 'traditional')['mem_size']
-            data_log[self.features_objects[x].id] = mem_usage
-            data_log['total'] = data_log['total'] + mem_usage
+            f_octree = self.features_objects[x].feat.get_octree(rounded_depth, factor)
+            globalsize = f_octree.size
+            mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
 
-            mem_usage_colorless = get_mem_octree(f_octree, 'traditional')['mem_size_colorless']
-            data_log_colorless[self.features_objects[x].id] = mem_usage_colorless
-            data_log_colorless['total'] = data_log_colorless['total'] + mem_usage_colorless
+            f_voxel = self.features_objects[x].feat.getVoxelStructure(mini_voxel_size)
 
-            mem_usage = get_mem_octree(f_octree)['mem_size']
-            data_log_open3d[self.features_objects[x].id] = mem_usage
-            data_log_open3d['total'] = data_log_open3d['total'] + mem_usage
-
-            mem_usage_colorless = get_mem_octree(f_octree)['mem_size_colorless']
-            data_log_open3d_colorless[self.features_objects[x].id] = mem_usage_colorless
-            data_log_open3d_colorless['total'] = data_log_open3d_colorless['total'] + mem_usage_colorless
-        
-        if show:
-            o3d.visualization.draw_geometries(global_bucket)
-        self.memLogger.log("octree", data_log)
-        self.memLogger.log("octree_colorless", data_log_colorless)
-        self.memLogger.log("octree_open3d", data_log_open3d)
-        self.memLogger.log("octree_open3d_colorless", data_log_open3d_colorless)
-
-
-
-
-
-
-
-
-        global_bucket = []
-        data_log = {'total':0}
-        data_log_colorless = {'total':0}
-        data_log_open3d = {'total':0}
-        data_log_open3d_colorless = {'total':0}
-
-        for x in range(len(self.features_objects)):
-            if isinstance(self.features_objects[x].feat,Plane):
-                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
-                global_bucket.append(self.features_objects[x].feat.getVoxelStructure())
-            elif isinstance(self.features_objects[x].feat,Cylinder):
-                self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
-                global_bucket.append(self.features_objects[x].feat.getVoxelStructure())
-
-
-            f_voxel = self.features_objects[x].feat.getVoxelStructure()
+            global_bucket_octree.append(f_octree)
+            global_bucket_voxel_grid.append(f_voxel)
 
             mem_usage = get_mem_voxel_grid(f_voxel, 'traditional')['mem_size']
-            data_log[self.features_objects[x].id] = mem_usage
-            data_log['total'] = data_log['total'] + mem_usage
+            data_log_voxel_grid[self.features_objects[x].id] = mem_usage
+            data_log_voxel_grid['total'] = data_log_voxel_grid['total'] + mem_usage
 
             mem_usage_colorless = get_mem_voxel_grid(f_voxel, 'traditional')['mem_size_colorless']
-            data_log_colorless[self.features_objects[x].id] = mem_usage_colorless
-            data_log_colorless['total'] = data_log_colorless['total'] + mem_usage_colorless
+            data_log_voxel_grid_colorless[self.features_objects[x].id] = mem_usage_colorless
+            data_log_voxel_grid_colorless['total'] = data_log_voxel_grid_colorless['total'] + mem_usage_colorless
 
             mem_usage = get_mem_voxel_grid(f_voxel)['mem_size']
-            data_log_open3d[self.features_objects[x].id] = mem_usage
-            data_log_open3d['total'] = data_log_open3d['total'] + mem_usage
+            data_log_voxel_grid_open3d[self.features_objects[x].id] = mem_usage
+            data_log_voxel_grid_open3d['total'] = data_log_voxel_grid_open3d['total'] + mem_usage
 
             mem_usage_colorless = get_mem_voxel_grid(f_voxel)['mem_size_colorless']
-            data_log_open3d_colorless[self.features_objects[x].id] = mem_usage_colorless
-            data_log_open3d_colorless['total'] = data_log_open3d_colorless['total'] + mem_usage_colorless
+            data_log_voxel_grid_open3d_colorless[self.features_objects[x].id] = mem_usage_colorless
+            data_log_voxel_grid_open3d_colorless['total'] = data_log_voxel_grid_open3d_colorless['total'] + mem_usage_colorless
+
+            mem_usage = get_mem_octree(f_octree, 'traditional')['mem_size']
+            data_log_octree[self.features_objects[x].id] = mem_usage
+            data_log_octree['total'] = data_log_octree['total'] + mem_usage
+
+            mem_usage_colorless = get_mem_octree(f_octree, 'traditional')['mem_size_colorless']
+            data_log_octree_colorless[self.features_objects[x].id] = mem_usage_colorless
+            data_log_octree_colorless['total'] = data_log_octree_colorless['total'] + mem_usage_colorless
+
+            mem_usage = get_mem_octree(f_octree)['mem_size']
+            data_log_octree_open3d[self.features_objects[x].id] = mem_usage
+            data_log_octree_open3d['total'] = data_log_octree_open3d['total'] + mem_usage
+
+            mem_usage_colorless = get_mem_octree(f_octree)['mem_size_colorless']
+            data_log_octree_open3d_colorless[self.features_objects[x].id] = mem_usage_colorless
+            data_log_octree_open3d_colorless['total'] = data_log_octree_open3d_colorless['total'] + mem_usage_colorless
+
 
         if show:
-            o3d.visualization.draw_geometries(global_bucket)
-        self.memLogger.log("voxel_grid", data_log)
-        self.memLogger.log("voxel_grid_colorless", data_log_colorless)
-        self.memLogger.log("voxel_grid_open3d", data_log_open3d)
-        self.memLogger.log("voxel_grid_open3d_colorless", data_log_open3d_colorless)
+            o3d.visualization.draw_geometries(global_bucket_octree, 'Octree feature-wise fixed size')
+            o3d.visualization.draw_geometries(global_bucket_voxel_grid, 'Voxel-grid feature-wise fixed size')
+
+        self.memLogger.log("voxel_grid", data_log_voxel_grid)
+        self.memLogger.log("voxel_grid_colorless", data_log_voxel_grid_colorless)
+        self.memLogger.log("voxel_grid_open3d", data_log_voxel_grid_open3d)
+        self.memLogger.log("voxel_grid_open3d_colorless", data_log_voxel_grid_open3d_colorless)
+
+        self.memLogger.log("octree", data_log_octree)
+        self.memLogger.log("octree_colorless", data_log_octree_colorless)
+        self.memLogger.log("octree_open3d", data_log_octree_open3d)
+        self.memLogger.log("octree_open3d_colorless", data_log_octree_open3d_colorless)
+
+        
 
 
+
+        # Truncate octree
+        global_bucket_octree = []
+        global_bucket_voxel_grid = []
+
+        data_log_voxel_grid = {'total':0}
+        data_log_octree = {'total':0}
+
+        for x in range(len(self.features_objects)):
+            self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+            
+            f_octree = self.features_objects[x].feat.get_octree()
+            mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
+            f_voxel = self.features_objects[x].feat.getVoxelStructure(mini_voxel_size)
+
+            global_bucket_octree.append(f_octree)
+            global_bucket_voxel_grid.append(f_voxel)
+
+            mem_usage = get_mem_voxel_grid(f_voxel)['mem_size']
+            data_log_voxel_grid[self.features_objects[x].id] = mem_usage
+            data_log_voxel_grid['total'] = data_log_voxel_grid['total'] + mem_usage
+
+            mem_usage = get_mem_octree(f_octree)['mem_size']
+            data_log_octree[self.features_objects[x].id] = mem_usage
+            data_log_octree['total'] = data_log_octree['total'] + mem_usage
+        if show:
+            o3d.visualization.draw_geometries(global_bucket_octree, 'Octree feature-wise truncate')
+            o3d.visualization.draw_geometries(global_bucket_voxel_grid, 'Voxel-grid feature-wise truncate')
+
+        self.memLogger.log("voxel_grid_truncate", data_log_voxel_grid)
+        self.memLogger.log("octree_truncate", data_log_octree)
 
 
 
@@ -862,85 +892,111 @@ class GlobalScene:
 
 
         #Generate pure octree World
-        data_log = {'total':0}
-        data_log_colorless = {'total':0}
-        data_log_open3d = {'total':0}
-        data_log_open3d_colorless = {'total':0}
+        # fixed_voxel_cize
+        global_bucket_octree = []
+        global_bucket_voxel_grid = []
+
+        data_log_voxel_grid = {'total':0}
+        data_log_voxel_grid_colorless = {'total':0}
+        data_log_voxel_grid_open3d = {'total':0}
+        data_log_voxel_grid_open3d_colorless = {'total':0}
+
+        data_log_octree = {'total':0}
+        data_log_octree_colorless = {'total':0}
+        data_log_octree_open3d = {'total':0}
+        data_log_octree_open3d_colorless = {'total':0}
 
         pcd_map = o3d.geometry.PointCloud()
         pcd_map.points = o3d.utility.Vector3dVector([])
         for x in range(len(self.features_objects)):
-            if isinstance(self.features_objects[x].feat,Plane):
-                pt_antigo = np.asarray(pcd_map.points)
-                pt_novo = np.asarray(self.features_objects[x].feat.bucket.points)
-                cor_antiga = np.asarray(pcd_map.colors)
-                cor_nova = np.asarray(self.features_objects[x].feat.bucket.colors)
-                print("apendando", np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
-            elif isinstance(self.features_objects[x].feat,Cylinder):
-                pt_antigo = np.asarray(pcd_map.points)
-                pt_novo = np.asarray(self.features_objects[x].feat.bucket.points)
-                cor_antiga = np.asarray(pcd_map.colors)
-                cor_nova = np.asarray(self.features_objects[x].feat.bucket.colors)
-                print("apendando", np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
-        octree = o3d.geometry.Octree(max_depth=5)
-        octree.convert_from_point_cloud(pcd_map, size_expand=0.01)
+            pt_antigo = np.asarray(pcd_map.points)
+            pt_novo = np.asarray(self.features_objects[x].feat.bucket.points)
+            cor_antiga = np.asarray(pcd_map.colors)
+            cor_nova = np.asarray(self.features_objects[x].feat.bucket.colors)
+            print("apendando", np.append(pt_antigo, pt_novo, axis=0))
+            pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
+            pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
+        
+        f_octree = o3d.geometry.Octree(max_depth=5)
+        f_octree.convert_from_point_cloud(pcd_map)
+        globalsize = f_octree.size
+        cell_size = 0.2
+        perfect_depth = np.log2(globalsize/cell_size)
+        rounded_depth = int(np.ceil(perfect_depth))
+        final_estimated_size = (cell_size*2**rounded_depth)
+        factor = final_estimated_size/globalsize -1
 
-        data_log['total'] = get_mem_octree(octree, 'traditional')['mem_size']
-        data_log_colorless['total'] = get_mem_octree(octree, 'traditional')['mem_size_colorless']
-        data_log_open3d['total'] = get_mem_octree(octree)['mem_size']
-        data_log_open3d_colorless['total'] = get_mem_octree(octree)['mem_size_colorless']
+        f_octree = o3d.geometry.Octree(max_depth=rounded_depth)
+        f_octree.convert_from_point_cloud(pcd_map, size_expand=factor)
+
+        globalsize = f_octree.size
+        mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
+
+        f_voxel = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_map, voxel_size=mini_voxel_size)
+
+        data_log_octree['total'] = get_mem_octree(f_octree, 'traditional')['mem_size']
+        data_log_octree_colorless['total'] = get_mem_octree(f_octree, 'traditional')['mem_size_colorless']
+        data_log_octree_open3d['total'] = get_mem_octree(f_octree)['mem_size']
+        data_log_octree_open3d_colorless['total'] = get_mem_octree(f_octree)['mem_size_colorless']
+
+        data_log_voxel_grid['total'] = get_mem_voxel_grid(f_voxel, 'traditional')['mem_size']
+        data_log_voxel_grid_colorless['total'] = get_mem_voxel_grid(f_voxel, 'traditional')['mem_size_colorless']
+        data_log_voxel_grid_open3d['total'] = get_mem_voxel_grid(f_voxel)['mem_size']
+        data_log_voxel_grid_open3d_colorless['total'] = get_mem_voxel_grid(f_voxel)['mem_size_colorless']
 
         if show:
-            o3d.visualization.draw_geometries([octree])
-        self.memLogger.log("only_octree", data_log)
-        self.memLogger.log("only_octree_colorless", data_log_colorless)
-        self.memLogger.log("only_octree_open3d", data_log_open3d)
-        self.memLogger.log("only_octree_open3d_colorless", data_log_open3d_colorless)
+            o3d.visualization.draw_geometries([f_octree], 'Octree global fixed voxel size')
+            o3d.visualization.draw_geometries([f_voxel], 'Voxel grid global fixed voxel size')
+
+        self.memLogger.log("only_octree", data_log_octree)
+        self.memLogger.log("only_octree_colorless", data_log_octree_colorless)
+        self.memLogger.log("only_octree_open3d", data_log_octree_open3d)
+        self.memLogger.log("only_octree_open3d_colorless", data_log_octree_open3d_colorless)
+        self.memLogger.log("only_voxel_grid", data_log_voxel_grid)
+        self.memLogger.log("only_voxel_grid_colorless", data_log_voxel_grid_colorless)
+        self.memLogger.log("only_voxel_grid_open3d", data_log_voxel_grid_open3d)
+        self.memLogger.log("only_voxel_grid_open3d_colorless", data_log_voxel_grid_open3d_colorless)
 
 
 
-        #Generate pure voxel grid
-        data_log = {'total':0}
-        data_log_colorless = {'total':0}
-        data_log_open3d = {'total':0}
-        data_log_open3d_colorless = {'total':0}
+
+        #Generate pure octree World
+        # truncate octree
+        global_bucket_octree = []
+        global_bucket_voxel_grid = []
+
+        data_log_voxel_grid = {'total':0}
+        data_log_octree = {'total':0}
+
 
         pcd_map = o3d.geometry.PointCloud()
         pcd_map.points = o3d.utility.Vector3dVector([])
         for x in range(len(self.features_objects)):
-            if isinstance(self.features_objects[x].feat,Plane):
-                pt_antigo = np.asarray(pcd_map.points)
-                pt_novo = np.asarray(self.features_objects[x].feat.bucket.points)
-                cor_antiga = np.asarray(pcd_map.colors)
-                cor_nova = np.asarray(self.features_objects[x].feat.bucket.colors)
-                print("apendando", np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
-            elif isinstance(self.features_objects[x].feat,Cylinder):
-                pt_antigo = np.asarray(pcd_map.points)
-                pt_novo = np.asarray(self.features_objects[x].feat.bucket.points)
-                cor_antiga = np.asarray(pcd_map.colors)
-                cor_nova = np.asarray(self.features_objects[x].feat.bucket.colors)
-                print("apendando", np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
-                pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
-        voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_map, voxel_size=0.2)
+            pt_antigo = np.asarray(pcd_map.points)
+            pt_novo = np.asarray(self.features_objects[x].feat.bucket.points)
+            cor_antiga = np.asarray(pcd_map.colors)
+            cor_nova = np.asarray(self.features_objects[x].feat.bucket.colors)
+            print("apendando", np.append(pt_antigo, pt_novo, axis=0))
+            pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
+            pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
 
-        data_log['total'] = get_mem_voxel_grid(voxel_grid, 'traditional')['mem_size']
-        data_log_colorless['total'] = get_mem_voxel_grid(voxel_grid, 'traditional')['mem_size_colorless']
-        data_log_open3d['total'] = get_mem_voxel_grid(voxel_grid)['mem_size']
-        data_log_open3d_colorless['total'] = get_mem_voxel_grid(voxel_grid)['mem_size_colorless']
+        f_octree = o3d.geometry.Octree(max_depth=5)
+        f_octree.convert_from_point_cloud(pcd_map)
+        mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
+        f_voxel = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_map, voxel_size=mini_voxel_size)
+
+        data_log_octree['total'] = get_mem_octree(f_octree)['mem_size']
+        data_log_voxel_grid['total'] = get_mem_voxel_grid(f_voxel)['mem_size']
 
         if show:
-            o3d.visualization.draw_geometries([voxel_grid])
-        self.memLogger.log("only_voxel_grid", data_log)
-        self.memLogger.log("only_voxel_grid_colorless", data_log_colorless)
-        self.memLogger.log("only_voxel_grid_open3d", data_log_open3d)
-        self.memLogger.log("only_voxel_grid_open3d_colorless", data_log_open3d_colorless)
+            o3d.visualization.draw_geometries([f_octree], 'Octree global truncate')
+            o3d.visualization.draw_geometries([f_voxel], 'Voxel grid global truncate')
+
+        self.memLogger.log("only_octree_truncate", data_log_octree)
+        self.memLogger.log("only_voxel_grid_truncate", data_log_voxel_grid)
+
+
+
 
 
 
@@ -1013,6 +1069,7 @@ class GlobalScene:
 
         self.memLogger.next()
         self.memLogger.save_as_json()
+        # self.memLogger.save_as_matlab()
         # for x in range(len(self.features_objects)):
         #     if isinstance(self.features_objects[x].feat,Cylinder):
         #         self.features_objects[x].feat.get_high_level_feature()
