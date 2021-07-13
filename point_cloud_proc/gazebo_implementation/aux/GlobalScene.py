@@ -18,6 +18,7 @@ from tkinter import ttk
 from tkinter import Toplevel
 import pickle
 from mpl_toolkits.mplot3d import Axes3D
+from timeit import default_timer as timer
 
 class GlobalScene:
 
@@ -83,6 +84,9 @@ class GlobalScene:
 
         self.memLogger.define_log("only_voxel_grid_truncate")
         self.memLogger.define_log("only_octree_truncate")
+
+        self.memLogger.define_log("time_log")
+        self.t__ = {}
 
     def get_feature_from_id(self, id):
         for i_global in self.features_objects:
@@ -214,6 +218,8 @@ class GlobalScene:
 
 
     def add_pcd(self, pcd, commands_odom_linear, commands_odom_angular, duration, i, vel_pos_real=[0,0,0], vel_orienta_real=[0, 0, 0,]):
+        self.t__ = {}
+        t__start = timer()
         self.iatual = i
         last_loc = np.asarray([0, 0, 0])
         last_angulo = np.asarray([0, 0, 0])
@@ -304,8 +310,10 @@ class GlobalScene:
         #print("vel_linear_inertial: "+ str(vel_linear_inertial))
         #print("vel_angular_inertial: "+ str(vel_angular_inertial))
         #print("duration: "+ str(duration))
+        t__end = timer()
+        self.t__['ekf_propagate'] = t__end - t__start
 
-
+        t__start = timer()
         from_camera_to_inertial(pcd)
 
         # print("AAAAAAAAAAAAAAAAAAAh")
@@ -325,7 +333,8 @@ class GlobalScene:
         self.ground_normal = ls.groundNormal
         self.ground_equation = ls.groundEquation
         #print("GND EQUATION: ", self.ground_equation)
-
+        t__end = timer()
+        self.t__['feature_extraction'] = t__end - t__start
 
         scene_features=[]
 
@@ -342,15 +351,23 @@ class GlobalScene:
             mundinho.extend(plane_list2[x].get_geometry())
         #o3d.visualization.draw_geometries(mundinho)    
 
+        t__start_feat_augmentation = timer()
+        t__full_bucket_augmentation=0
 
+        t__full_mahala = 0
+        t__full_update = 0
         oldstate = copy.deepcopy(self.ekf)
         for x in range(len(planes_list)):
             mundinho = []
             mundinho.extend(self.fet_geo)
+
+
+            t__start = timer()
             id = self.ekf.calculate_mahalanobis(planes_list[x])
+            t__end = timer()
+            t__full_mahala = t__full_mahala + (t__end-t__start)
 
             inliers_raw = planes_list[x].inliers
-
             #id = -1
             z_medido = np.asarray([[planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2], planes_list[x].equation[3]]]).T
             normal_feature = np.asarray([planes_list[x].equation[0], planes_list[x].equation[1], planes_list[x].equation[2]])
@@ -359,53 +376,26 @@ class GlobalScene:
             #     continue
 
             planes_list[x].move(self.ekf)
+            t__start_feat_augmentation = t__start_feat_augmentation - planes_list[x].t__bucket_debug
             gfeature = Generic_feature(planes_list[x], ground_equation=self.ground_equation)
             if(not id == -1):
                 older_feature = self.get_feature_from_id(id)
-                if not older_feature.correspond(gfeature, self.ekf):
+
+                is_correspondence = older_feature.correspond(gfeature, self.ekf)
+                t__full_update = t__full_update + older_feature.t__update
+                t__full_bucket_augmentation = t__full_bucket_augmentation + older_feature.t__bucket_augmentation
+                if not is_correspondence:
                     id = -1
                 else:
-                    measured_plane = copy.deepcopy(gfeature)
-                    measured_plane.feat.color = [1, 0, 0]
-                    older_feature2 = copy.deepcopy(older_feature)
-                    older_feature2.feat.color = [0, 1, 0]
-                    mundinho.extend(measured_plane.feat.get_geometry())
-                    mundinho.extend(older_feature2.feat.get_geometry())
+                    pass
+                    # measured_plane = copy.deepcopy(gfeature)
+                    # measured_plane.feat.color = [1, 0, 0]
+                    # older_feature2 = copy.deepcopy(older_feature)
+                    # older_feature2.feat.color = [0, 1, 0]
+                    # mundinho.extend(measured_plane.feat.get_geometry())
+                    # mundinho.extend(older_feature2.feat.get_geometry())
                     #o3d.visualization.draw_geometries(mundinho) 
                     
-
-
-
-                # normal_feature = np.asarray([older_feature.feat.equation[0], older_feature.feat.equation[1], older_feature.feat.equation[2]])
-                # normal_candidate = np.asarray([gfeature.feat.equation[0], gfeature.feat.equation[1], gfeature.feat.equation[2]])
-                # # Align normals
-                # bigger_axis = np.argmax(np.abs(normal_feature))
-                # if not (np.sign(normal_feature[bigger_axis]) == np.sign(normal_candidate[bigger_axis])):
-                #     normal_candidate = -normal_candidate
-                # errorNormal = (np.abs((normal_feature[0]-normal_candidate[0]))+np.abs((normal_feature[1]-normal_candidate[1]))+np.abs((normal_feature[2]-normal_candidate[2])))
-                
-                # if not(errorNormal>0.3):
-
-                # If is ground
-# print("ID DO PLANO: ", self.getGroundPlaneId())
-# if(id == self.getGroundPlaneId()):
-#     #pass
-#     older_feature.correspond(gfeature, self.ekf)
-# else:
-
-#     d_maior = np.amax([older_feature.feat.width,older_feature.feat.height, gfeature.feat.width,gfeature.feat.height])
-#     if(np.linalg.norm((older_feature.feat.centroid - gfeature.feat.centroid)) < d_maior*6):
-#         area1 = older_feature.feat.width*older_feature.feat.height
-#         area2 = gfeature.feat.width*gfeature.feat.height
-#         if (not (area1/area2 < 0.05 or area1/area2 > 20)) or id == 0:
-#             if not older_feature.correspond(gfeature, self.ekf):
-#                 id = -1
-#         else:
-#             id = -1
-#     else:
-#         id = -1
-# # else:
-# #     id = -1
             if id == -1:
                 i = self.ekf.add_plane(z_medido)
                 gfeature.id = i
@@ -417,14 +407,22 @@ class GlobalScene:
                 #i = self.ekf.add_plane(z_medido)
                 #gfeature.id = i
                 #self.features_objects.append(gfeature)
-
+                t__start = timer()
                 cent = np.asarray([[ls.mainCylinders[x].center[0]],[ls.mainCylinders[x].center[1]],[ls.mainCylinders[x].center[2]]])
                 id = self.ekf.calculate_mahalanobis(ls.mainCylinders[x])
+                t__end = timer()
+                t__full_mahala = t__full_mahala + (t__end-t__start)
+
                 ls.mainCylinders[x].move(self.ekf)
+                t__start_feat_augmentation = t__start_feat_augmentation - planes_list[x].t__bucket_debug
+                
                 gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
                 if not id == -1:
                     older_feature = self.get_feature_from_id(id)
-                    if not older_feature.correspond(gfeature, self.ekf):
+                    is_correspondence = older_feature.correspond(gfeature, self.ekf)
+                    t__full_update = t__full_update + older_feature.t__update
+                    t__full_bucket_augmentation = t__full_bucket_augmentation + older_feature.t__bucket_augmentation
+                    if not is_correspondence:
                         id = -1
                 if id == -1:
                     i = self.ekf.add_point(cent)
@@ -432,179 +430,13 @@ class GlobalScene:
 
                     self.features_objects.append(gfeature)
 
-
-
-
-
-
-
-            # print("Visto do corpo: ", cent.T)
-            # center_inertial = apply_g_point(self.ekf.x_m, cent)
-            # ls.mainCylinders[x].move(get_rotation_matrix_bti(atual_angulo), atual_loc)
-            # print("Rotacionado correto: ", ls.mainCylinders[x].center)
-            # print("Rotacionado pela fc g: ", center_inertial.T)
-            # zp = apply_h_point(self.ekf.x_m, center_inertial)
-            # print("DesRotacionado pela fc h: ", zp.T)
-            # gfeature = Generic_feature(ls.mainCylinders[x], ground_equation=self.ground_equation)
-            # scene_features.append(gfeature)
-
-
-        ################### Associação de dados antiga
-        # if(len(self.features_objects)>0):
-        #     for i_cena in range(len(scene_features)):
-        #         ja_existe = False
-        #         list_to_delete = []
-        #         for i_global in range(len(self.features_objects)):
-        #             associou = self.features_objects[i_global].verifyCorrespondence(scene_features[i_cena], self.ekf)
-        #             if(associou):
-        #                 ja_existe = True
-        #                 if isinstance(scene_features[i_cena].feat,Cylinder) and isinstance(self.features_objects[i_global].feat,Plane):
-        #                     # Remove all planes that can be part of this cylinder
-        #                     self.features_objects[i_global].feat.color = scene_features[i_cena].feat.color
-        #                     list_to_delete.append(self.features_objects[i_global])
-        #                     #self.features_objects.append(scene_features[i_cena])
-        #                 #break
-        #         if(not ja_existe):
-        #             if isinstance(scene_features[i_cena].feat,Plane):
-        #                 z_medido = apply_h_plane(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
-        #                 i = self.ekf.add_plane(z_medido)
-        #                 scene_features[i_cena].id = i
-        #             self.features_objects.append(scene_features[i_cena])
-
-        #         else:
-        #             if isinstance(scene_features[i_cena].feat,Cylinder) and list_to_delete:
-        #             # If already exists, delete all correspondences
-        #                 self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
-        #                 self.features_objects.append(scene_features[i_cena])
-                    
-        # else:
-        #     for i_cena in range(len(scene_features)):
-        #         if isinstance(scene_features[i_cena].feat,Plane):
-        #             z_medido = apply_h_plane(self.ekf.x_m, scene_features[i_cena].feat.equation[3]*np.asarray([[scene_features[i_cena].feat.equation[0]], [scene_features[i_cena].feat.equation[1]], [scene_features[i_cena].feat.equation[2]]]))
-        #             i = self.ekf.add_plane(z_medido)
-        #             scene_features[i_cena].id = i
-        #         self.features_objects.append(scene_features[i_cena])
-        #         self.fet_geo.append(scene_features[i_cena].feat.get_geometry())
+        t__end_feat_augmentation = timer()
+        self.t__['ekf_data_association'] = t__full_mahala
+        self.t__['ekf_update'] = t__full_update
+        self.t__['feature_augmentation'] = t__end_feat_augmentation - t__start_feat_augmentation - t__full_update - t__full_mahala - t__full_bucket_augmentation
+        self.t__['bucket_augmentation'] = t__full_bucket_augmentation
         self.fet_geo = []
 
-        # Map cleaning and feature merge
-        # Detect cuboid
-        # found_cuboid = True
-        # while found_cuboid:
-        #     list_to_delete = []
-        #     found_cuboid = False
-        #     for ob in self.features_objects:
-        #         if isinstance(ob.feat, Plane):
-        #             altura1 = ob.feat.get_height(self.ground_normal)
-        #             if altura1 > 1.5:
-        #                 continue
-        #             if altura1 < 0.1:
-        #                 continue
-        #             for ob2 in self.features_objects:
-        #                 if isinstance(ob2.feat, Plane):
-        #                     if (np.linalg.norm(ob2.feat.centroid - ob2.feat.centroid) > 3):
-        #                         continue
-
-        #                     altura2 = ob2.feat.get_height(self.ground_normal)
-        #                     if altura2 > 1.5:
-        #                         continue
-        #                     # For a cuboid, height must be similar for the box's walls
-        #                     if(np.abs(ob2.feat.width-ob.feat.width) < 0.0001):
-        #                         # plane1 = plane2
-        #                         continue
-        #                     #print("Comparando alturas: ", altura1, " - ", altura2, " - diff: ",np.abs(altura1-altura2), " - Margem: ",((altura1+altura2)/2)*0.2)
-
-        #                     #if(np.abs(altura1-altura2)<((altura1+altura2)/2)*0.2):
-        #                     normal1 = np.asarray([ob.feat.equation[0],ob.feat.equation[1],ob.feat.equation[2]])
-        #                     normal2 = np.asarray([ob2.feat.equation[0],ob2.feat.equation[1],ob2.feat.equation[2]])
-        #                     perpendicularity = np.cross(normal1,normal2)
-        #                     # Planes are perpndiculars
-        #                     if(np.linalg.norm(perpendicularity) > 0.9):
-        #                         # Lets search for another plane with a similar normal
-        #                         for ob3 in self.features_objects:
-        #                             if isinstance(ob3.feat, Plane):
-        #                                 altura3 = ob3.feat.get_height(self.ground_normal)
-        #                                 if altura2 > 1.5:
-        #                                     continue
-        #                                 if (np.linalg.norm(ob3.feat.centroid - ob2.feat.centroid) > 3):
-        #                                     continue
-        #                                 if (np.linalg.norm(ob3.feat.centroid - ob.feat.centroid) > 3):
-        #                                     continue
-        #                                 normal3 = np.asarray([ob3.feat.equation[0],ob3.feat.equation[1],ob3.feat.equation[2]])
-        #                                 if(np.linalg.norm(perpendicularity - normal3) < 0.3):
-        #                                     d1 = distance_from_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
-        #                                     d2 = distance_from_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
-        #                                     #print("TESTOU AQUI DENTRO - ", d1, " - ", d2)
-        #                                     meandim = np.mean([ob.feat.width, ob.feat.height, ob2.feat.width, ob2.feat.height, ob3.feat.width, ob3.feat.height])
-        #                                     if(np.linalg.norm(d1) < meandim and np.linalg.norm(d2) < meandim  ):
-        #                                         cub = Cuboid(ob.feat, ob2.feat, ob3.feat, self.ground_normal)
-        #                                         if(cub.width*cub.height*cub.depth < 1.5**3):
-        #                                             ob2.feat.color = ob.feat.color
-        #                                             ob3.feat.color = ob.feat.color
-        #                                             #encontro = get_point_between_two_lines(normal1, normal2, ob.feat.centroid, ob2.feat.centroid)
-        #                                             #encontro2 = get_point_between_two_lines(normal1, normal3, ob.feat.centroid, ob3.feat.centroid)
-                                                    
-        #                                             g = Generic_feature(cub, self.ground_equation)
-        #                                             for ob_plane_clear in self.features_objects:
-        #                                                 if isinstance(ob_plane_clear.feat, Plane):
-        #                                                     associou = g.verifyCorrespondence(ob_plane_clear, self.ekf)
-        #                                                     if(associou):
-        #                                                         list_to_delete.append(ob_plane_clear)
-        #                                             self.features_objects.append(g)
-                                                    
-        #                                             # list_to_delete.append(ob)
-        #                                             # list_to_delete.append(ob2)
-        #                                             # list_to_delete.append(ob3)
-        #                                             # TODO: Fazer correspondência entre plano e cubo
-        #                                             # TODO: Verificar correspondência de todas as features planares 
-        #                                             break
-        #                                         else:
-        #                                             continue
-        #                 if list_to_delete:
-        #                     break
-        #         if list_to_delete:
-        #             break
-
-        #     # Delete merged objects
-        #     self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
-        #     if list_to_delete:
-
-        #         found_cuboid = True
-
-        #Map cleaning
-        # if(i % 1 == 0):
-        #     print("------------------------")
-        #     print("TA FAZENDO MAP CLEANING")
-        #     print("------------------------")
-        #     limpou_objeto = True
-        #     while limpou_objeto:
-        #         list_to_delete = []
-        #         for i_global1 in range(len(self.features_objects)):
-        #             #if(self.features_objects[i_global1].self.running_geo[""])
-        #             for i_global2 in range(len(self.features_objects)):
-        #                 if(not (i_global1 == i_global2)):
-        #                     associou = self.features_objects[i_global1].verifyCorrespondence(self.features_objects[i_global2], self.ekf)
-        #                     if(associou):
-        #                         self.ekf.delete_feature(self.features_objects[i_global2].id)
-        #                         # Move todos os índices maiores que aquele pra frente
-        #                         for ifeat in self.features_objects:
-        #                             if self.features_objects[i_global2].id < ifeat.id:
-        #                                 ifeat.id = ifeat.id-1
-        #                         list_to_delete.append(self.features_objects[i_global2])
-        #                         break
-        #             if list_to_delete:
-        #                 break
-        #         if list_to_delete:
-        #             self.features_objects = [x for x in self.features_objects if x not in list_to_delete]
-        #             limpou_objeto = True
-        #         else:
-        #             limpou_objeto = False
-
-
-
-        # pcd_moved = copy.deepcopy(pcd).rotate(get_rotation_matrix_bti(atual_angulo), center=(0,0,0)).translate(atual_loc)
-        # self.pcd_total.append(pcd_moved)
-        # o3d.visualization.draw_geometries(self.pcd_total)
 
         self.scenes_rotation.append(atual_angulo)
         self.scenes_translation.append(atual_loc)
@@ -714,14 +546,21 @@ class GlobalScene:
         global_bucket = []
         data_log = {'total':0}
         data_log_colorless = {'total':0}
-        
+        t__render = 0
+        t__full = 0
         for x in range(len(self.features_objects)):
             if isinstance(self.features_objects[x].feat,Plane):
                 self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                t__start = timer()
                 global_bucket.append(self.features_objects[x].feat.bucket)
+                t__end = timer()
+                t__full = t__full + t__end - t__start
             elif isinstance(self.features_objects[x].feat,Cylinder):
                 self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
+                t__start = timer()
                 global_bucket.append(self.features_objects[x].feat.bucket)
+                t__end = timer()
+                t__full = t__full + t__end - t__start
 
             mem_usage = get_mem_pcd(self.features_objects[x].feat.bucket)['mem_size']
             data_log[self.features_objects[x].id] = mem_usage
@@ -732,13 +571,19 @@ class GlobalScene:
             data_log_colorless['total'] = data_log_colorless['total'] + mem_usage_colorless
 
         if show:
+            t__start = timer()
             o3d.visualization.draw_geometries(global_bucket)
+            t__end = timer()
+            self.t__['pcd_render'] = t__end - t__start
+
         self.memLogger.log("pcd", data_log)
         self.memLogger.log("pcd_colorless", data_log_colorless)
+        self.t__['pcd'] = t__full
 
 
-
-
+        t__full_octree = 0
+        t__full_voxel_grid = 0
+        t__render = 0
 
         # fixed_voxel_cize
         global_bucket_octree = []
@@ -765,11 +610,18 @@ class GlobalScene:
             final_estimated_size = (cell_size*2**rounded_depth)
             factor = final_estimated_size/globalsize -1
 
+            t__start = timer()
             f_octree = self.features_objects[x].feat.get_octree(rounded_depth, factor)
+            t__end = timer()
+            t__full_octree = t__full_octree + t__end - t__start
+
             globalsize = f_octree.size
             mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
 
+            t__start = timer()
             f_voxel = self.features_objects[x].feat.getVoxelStructure(mini_voxel_size)
+            t__end = timer()
+            t__full_voxel_grid = t__full_voxel_grid + t__end - t__start
 
             global_bucket_octree.append(f_octree)
             global_bucket_voxel_grid.append(f_voxel)
@@ -808,8 +660,16 @@ class GlobalScene:
 
 
         if show:
+            t__start = timer()
             o3d.visualization.draw_geometries(global_bucket_octree, 'Octree feature-wise fixed size')
+            t__end = timer()
+            self.t__['octree_open3d_render'] = t__end - t__start
+
+            t__start = timer()
             o3d.visualization.draw_geometries(global_bucket_voxel_grid, 'Voxel-grid feature-wise fixed size')
+            t__end = timer()
+            self.t__['voxel_grid_open3d_render'] = t__end - t__start
+
 
         self.memLogger.log("voxel_grid", data_log_voxel_grid)
         self.memLogger.log("voxel_grid_colorless", data_log_voxel_grid_colorless)
@@ -820,11 +680,15 @@ class GlobalScene:
         self.memLogger.log("octree_colorless", data_log_octree_colorless)
         self.memLogger.log("octree_open3d", data_log_octree_open3d)
         self.memLogger.log("octree_open3d_colorless", data_log_octree_open3d_colorless)
+        self.t__['octree_open3d'] = t__full_octree
+        self.t__['voxel_grid_open3d'] = t__full_voxel_grid
 
-        
 
 
 
+
+        t__full_octree = 0
+        t__full_voxel_grid = 0
         # Truncate octree
         global_bucket_octree = []
         global_bucket_voxel_grid = []
@@ -835,9 +699,17 @@ class GlobalScene:
         for x in range(len(self.features_objects)):
             self.features_objects[x].feat.bucket.paint_uniform_color(self.features_objects[x].feat.color)
             
+            t__start = timer()
             f_octree = self.features_objects[x].feat.get_octree()
+            t__end = timer()
+            t__full_octree = t__full_octree + t__end - t__start
+
             mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
+
+            t__start = timer()
             f_voxel = self.features_objects[x].feat.getVoxelStructure(mini_voxel_size)
+            t__end = timer()
+            t__full_voxel_grid = t__full_voxel_grid + t__end - t__start
 
             global_bucket_octree.append(f_octree)
             global_bucket_voxel_grid.append(f_voxel)
@@ -850,12 +722,21 @@ class GlobalScene:
             data_log_octree[self.features_objects[x].id] = mem_usage
             data_log_octree['total'] = data_log_octree['total'] + mem_usage
         if show:
+            t__start = timer()
             o3d.visualization.draw_geometries(global_bucket_octree, 'Octree feature-wise truncate')
+            t__end = timer()
+            self.t__['octree_truncate_render'] = t__end - t__start
+
+            t__start = timer()
             o3d.visualization.draw_geometries(global_bucket_voxel_grid, 'Voxel-grid feature-wise truncate')
+            t__end = timer()
+            self.t__['voxel_grid_truncate_render'] = t__end - t__start
+
 
         self.memLogger.log("voxel_grid_truncate", data_log_voxel_grid)
         self.memLogger.log("octree_truncate", data_log_octree)
-
+        self.t__['octree_truncate'] = t__full_octree
+        self.t__['voxel_grid_truncate'] = t__full_voxel_grid
 
 
 
@@ -888,7 +769,8 @@ class GlobalScene:
 
 
 
-
+        t__full_octree = 0
+        t__full_voxel_grid = 0
 
 
         #Generate pure octree World
@@ -926,13 +808,20 @@ class GlobalScene:
         final_estimated_size = (cell_size*2**rounded_depth)
         factor = final_estimated_size/globalsize -1
 
+        t__start = timer()
         f_octree = o3d.geometry.Octree(max_depth=rounded_depth)
         f_octree.convert_from_point_cloud(pcd_map, size_expand=factor)
+        t__end = timer()
+        t__full_octree = t__full_octree + t__end - t__start
 
         globalsize = f_octree.size
         mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
 
+        t__start = timer()
         f_voxel = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_map, voxel_size=mini_voxel_size)
+        t__end = timer()
+        t__full_voxel_grid = t__full_voxel_grid + t__end - t__start
+
 
         data_log_octree['total'] = get_mem_octree(f_octree, 'traditional')['mem_size']
         data_log_octree_colorless['total'] = get_mem_octree(f_octree, 'traditional')['mem_size_colorless']
@@ -945,8 +834,16 @@ class GlobalScene:
         data_log_voxel_grid_open3d_colorless['total'] = get_mem_voxel_grid(f_voxel)['mem_size_colorless']
 
         if show:
+            t__start = timer()
             o3d.visualization.draw_geometries([f_octree], 'Octree global fixed voxel size')
+            t__end = timer()
+            self.t__['only_octree_open3d_render'] = t__end - t__start
+
+            t__start = timer()
             o3d.visualization.draw_geometries([f_voxel], 'Voxel grid global fixed voxel size')
+            t__end = timer()
+            self.t__['only_voxel_grid_open3d_render'] = t__end - t__start
+
 
         self.memLogger.log("only_octree", data_log_octree)
         self.memLogger.log("only_octree_colorless", data_log_octree_colorless)
@@ -956,9 +853,16 @@ class GlobalScene:
         self.memLogger.log("only_voxel_grid_colorless", data_log_voxel_grid_colorless)
         self.memLogger.log("only_voxel_grid_open3d", data_log_voxel_grid_open3d)
         self.memLogger.log("only_voxel_grid_open3d_colorless", data_log_voxel_grid_open3d_colorless)
+        self.t__['only_octree_open3d'] = t__full_octree
+        self.t__['only_voxel_grid_open3d'] = t__full_voxel_grid
 
 
 
+
+
+
+        t__full_octree = 0
+        t__full_voxel_grid = 0
 
         #Generate pure octree World
         # truncate octree
@@ -980,33 +884,52 @@ class GlobalScene:
             pcd_map.points = o3d.utility.Vector3dVector(np.append(pt_antigo, pt_novo, axis=0))
             pcd_map.colors = o3d.utility.Vector3dVector(np.append(cor_antiga, cor_nova, axis=0))
 
+        t__start = timer()
         f_octree = o3d.geometry.Octree(max_depth=5)
         f_octree.convert_from_point_cloud(pcd_map)
+        t__end = timer()
+        t__full_octree = t__full_octree + t__end - t__start
+
         mini_voxel_size = f_octree.size/(2**(f_octree.max_depth))
+
+        t__start = timer()
         f_voxel = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_map, voxel_size=mini_voxel_size)
+        t__end = timer()
+        t__full_voxel_grid = t__full_voxel_grid + t__end - t__start
 
         data_log_octree['total'] = get_mem_octree(f_octree)['mem_size']
         data_log_voxel_grid['total'] = get_mem_voxel_grid(f_voxel)['mem_size']
 
         if show:
+            t__start = timer()
             o3d.visualization.draw_geometries([f_octree], 'Octree global truncate')
+            t__end = timer()
+            self.t__['only_octree_truncate_render'] = t__end - t__start
+
+            t__start = timer()
             o3d.visualization.draw_geometries([f_voxel], 'Voxel grid global truncate')
+            t__end = timer()
+            self.t__['only_voxel_grid_truncate_render'] = t__end - t__start
 
         self.memLogger.log("only_octree_truncate", data_log_octree)
         self.memLogger.log("only_voxel_grid_truncate", data_log_voxel_grid)
+        self.t__['only_octree_truncate'] = t__full_octree
+        self.t__['only_voxel_grid_truncate'] = t__full_voxel_grid
 
 
 
 
-
-
+        t__full = 0
         # Low level world:
         data_log = {'total':0}
         data_log_colorless = {'total':0}
         global_bucket = []
         for x in range(len(self.features_objects)):
             if isinstance(self.features_objects[x].feat,Plane):
+                t__start = timer()
                 global_bucket.append(self.features_objects[x].feat.get_geometry()[0])
+                t__end = timer()
+                t__full = t__full + t__end - t__start
                 
                 data_log[self.features_objects[x].id] = get_mem_feature("plane")['mem_size']
                 data_log['total'] = data_log['total'] + get_mem_feature("plane")['mem_size']
@@ -1015,7 +938,10 @@ class GlobalScene:
 
 
             elif isinstance(self.features_objects[x].feat,Cylinder):
+                t__start = timer()
                 global_bucket.append(self.features_objects[x].feat.get_geometry()[0])
+                t__end = timer()
+                t__full = t__full + t__end - t__start
 
                 data_log[self.features_objects[x].id] = get_mem_feature("cylinder")['mem_size']
                 data_log['total'] = data_log['total'] + get_mem_feature("cylinder")['mem_size']
@@ -1023,20 +949,27 @@ class GlobalScene:
                 data_log_colorless['total'] = data_log_colorless['total'] + get_mem_feature("cylinder")['mem_size_colorless']
         
         if show:
+            t__start = timer()
             o3d.visualization.draw_geometries(global_bucket)
+            t__end = timer()
+            self.t__['low_level_world_render'] = t__end - t__start
         self.memLogger.log("low_level_world", data_log)
         self.memLogger.log("low_level_world_colorless", data_log_colorless)
+        self.t__['low_level_world'] = t__full
 
 
-
-
+        
         # High level world:
+        t__full = 0
         global_bucket = []
         data_log = {'total':0}
         data_log_colorless = {'total':0}
         for x in range(len(self.features_objects)):
             if isinstance(self.features_objects[x].feat,Plane):
+                t__start = timer()
                 global_bucket.append(self.features_objects[x].feat.get_geometry()[0])
+                t__end = timer()
+                t__full = t__full + t__end - t__start
 
                 data_log[self.features_objects[x].id] = get_mem_feature("plane")['mem_size']
                 data_log['total'] = data_log['total'] + get_mem_feature("plane")['mem_size']
@@ -1044,7 +977,10 @@ class GlobalScene:
                 data_log_colorless['total'] = data_log_colorless['total'] + get_mem_feature("plane")['mem_size_colorless']
 
             elif isinstance(self.features_objects[x].feat,Cylinder):
+                t__start = timer()
                 high_level_feature, mesh = self.features_objects[x].feat.get_high_level_feature()
+                t__end = timer()
+                t__full = t__full + t__end - t__start
                 if high_level_feature == 'cuboid':
                     data_log[self.features_objects[x].id] = get_mem_feature("cuboid")['mem_size']
                     data_log['total'] = data_log['total'] + get_mem_feature("cuboid")['mem_size']
@@ -1063,10 +999,16 @@ class GlobalScene:
                 global_bucket.append(mesh)
         
         if show:
+            t__start = timer()
             o3d.visualization.draw_geometries(global_bucket)
+            t__end = timer()
+            self.t__['high_level_world_render'] = t__end - t__start
+
         self.memLogger.log("high_level_world", data_log)
         self.memLogger.log("high_level_world_colorless", data_log_colorless)
+        self.t__['high_level_world'] = t__full
 
+        self.memLogger.log("time_log", self.t__)
         self.memLogger.next()
         self.memLogger.save_as_json()
         # self.memLogger.save_as_matlab()

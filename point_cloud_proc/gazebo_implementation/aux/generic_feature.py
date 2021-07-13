@@ -7,13 +7,15 @@ from aux.plane import Plane
 from aux.cuboid import Cuboid
 from aux import *
 from aux.aux_ekf import *
-
+from timeit import default_timer as timer
 class Generic_feature:
 
     def __init__(self, feat, id=0, ground_equation = [0, 0, 0, 0]):
         self.ground_equation = ground_equation
         self.feat = feat
         self.id = id
+        self.t__update = 0
+        self.t__bucket_augmentation =0
         self.running_geo = {"total": 1, "plane":0, "cylinder":0, "cuboid":0}
         if isinstance(self.feat,Plane):
             self.running_geo['plane'] = 1
@@ -177,12 +179,16 @@ class Generic_feature:
     def correspond(self, compare_feat, ekf = ekf):
         print(compare_feat.feat)
         print(self.feat)
+        self.t__bucket_augmentation = 0
         if isinstance(self.feat,Plane):
             if isinstance(compare_feat.feat,Plane):
+                t__start = timer()
                 Z = np.asarray([[compare_feat.feat.equation[0],compare_feat.feat.equation[1],compare_feat.feat.equation[2],compare_feat.feat.equation[3]]]).T
                 Z = apply_h_plane(ekf.x_m, Z)
                 N = ekf.upload_plane(Z, self.id, only_test= False)
+                self.t__update = timer() - t__start
                 self.feat.append_plane(compare_feat, copy.deepcopy(from_feature_to_equation(N)))
+                self.t__bucket_augmentation = self.feat.t__bucket
                 return True
                 # neweq = [N[0,0], N[1,0], N[2,0], N[3,0]]
 
@@ -197,19 +203,22 @@ class Generic_feature:
                 #     return False
 
         if isinstance(self.feat,Cylinder):
-            if isinstance(compare_feat.feat,Cylinder):
+            if isinstance(compare_feat.feat,Cylinder): 
                 Z = np.asarray([[compare_feat.feat.center[0]],[compare_feat.feat.center[1]],[compare_feat.feat.center[2]]])
                 C = apply_h_point(ekf.x_m, Z)
                 Z_new = ekf.upload_point(C, self.id, only_test= True)
-
                 cylinder_cobaia = copy.deepcopy(self.feat)
                 if(cylinder_cobaia.append_cylinder(compare_feat, Z_new)):
+                    t__start = timer()
                     Z_new_2 = ekf.upload_point(C, self.id, only_test= False)
+                    self.t__update = timer() - t__start
                     self.feat.append_cylinder(compare_feat, Z_new_2)
                     self.running_geo["cylinder"] = self.running_geo["cylinder"]+1
                     self.running_geo["total"] = self.running_geo["total"]+1
+                    self.t__bucket_augmentation = self.feat.t__bucket*2
                     return True
                 else:
+                    self.t__bucket_augmentation = self.feat.t__bucket
                     return False
 
     def getProprieties(self):

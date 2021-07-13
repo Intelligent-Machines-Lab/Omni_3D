@@ -3,6 +3,7 @@ import numpy as np
 import random
 import copy 
 from aux.aux import *
+from timeit import default_timer as timer
 
 class Cylinder:
 
@@ -30,6 +31,9 @@ class Cylinder:
         self.bucket_odom.points = o3d.utility.Vector3dVector([])
 
         self.high_level_definition = {}
+
+        self.t__bucket = 0
+        self.t__bucket_debug = 0
 
         # self.octree_model = o3d.geometry.Octree(max_depth=4).convert_from_point_cloud(o3d.geometry.PointCloud())
         # self.voxel_grid_model = o3d.geometry.VoxelGrid()
@@ -219,7 +223,11 @@ class Cylinder:
         self.normal = np.dot(rotMatrix, self.normal)
 
         if self.store_point_bucket:
+            t__start = timer()
             self.bucket.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+            self.t__bucket = timer() - t__start
+
+            t__start = timer()
             self.bucket_pos.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
 
             ekf_odom_x = copy.deepcopy(ekf.x_errado)
@@ -229,6 +237,7 @@ class Cylinder:
             tranlation_odom = atual_loc_odom
             inlier_move_odom = np.dot(self.inliers, rotMatrix_odom.T) + tranlation_odom
             self.bucket_odom.points = o3d.utility.Vector3dVector(np.asarray(inlier_move_odom))
+            self.t__bucket_debug = timer() - t__start
 
         # if self.store_octree_model:
         #     self.octree_model = o3d.geometry.Octree(max_depth=4)
@@ -246,16 +255,21 @@ class Cylinder:
         #print("Centro depois: "+str(self.center))
 
         if self.store_point_bucket:
+            t__start = timer()
             self.bucket_pos.points = o3d.utility.Vector3dVector(np.append(self.bucket_pos.points, compare_feat.feat.inliers, axis=0))
+            self.t__bucket_debug = timer() - t__start
 
+            t__start = timer()
             diff_feat_observada = np.asarray(compare_feat.feat.center) - np.asarray([Z_new[0,0], Z_new[1,0], Z_new[2,0]])
             inliers_observado_corrected = compare_feat.feat.inliers - diff_feat_observada
             inliers_feature_corrected = self.bucket.points - diff
             corrected_points =np.append(inliers_feature_corrected, inliers_observado_corrected, axis=0)
             self.bucket.points = o3d.utility.Vector3dVector(corrected_points)
+            self.t__bucket = timer() - t__start
 
+            t__start = timer()
             self.bucket_odom.points = o3d.utility.Vector3dVector(np.append(self.bucket_odom.points, compare_feat.feat.bucket_odom.points, axis=0))
-
+            self.t__bucket_debug = timer() - t__start + self.t__bucket_debug
         # if self.store_octree_model:
         #     diff_feat_observada = np.asarray(compare_feat.feat.center) - np.asarray([Z_new[0,0], Z_new[1,0], Z_new[2,0]])
         #     inliers_observado_corrected = compare_feat.feat.inliers - diff_feat_observada

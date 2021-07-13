@@ -8,7 +8,7 @@ from aux.qhull_2d import *
 from aux.min_bounding_rect import *
 import matplotlib.pyplot as plt
 import pickle
-
+from timeit import default_timer as timer
 
 
 class Plane:
@@ -23,7 +23,7 @@ class Plane:
 
         self.store_point_bucket = True
 
-
+        
         self.bucket = o3d.geometry.PointCloud()
         self.bucket.points = o3d.utility.Vector3dVector([])
 
@@ -32,6 +32,9 @@ class Plane:
 
         self.bucket_odom = o3d.geometry.PointCloud()
         self.bucket_odom.points = o3d.utility.Vector3dVector([])
+
+        self.t__bucket =0
+        self.t__bucket_debug =0
 
     def findPlane(self, pts, thresh=0.05, minPoints=3, maxIteration=1000):
         n_points = pts.shape[0]
@@ -162,10 +165,12 @@ class Plane:
         self.inliers = np.dot(self.inliers, rotMatrix.T) + tranlation
 
         if self.store_point_bucket:
-
+            t__start = timer()
             self.bucket.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
-            self.bucket_pos.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
+            self.t__bucket = timer() - t__start
 
+            t__start = timer()
+            self.bucket_pos.points = o3d.utility.Vector3dVector(np.asarray(self.inliers))
 
             ekf_odom_x = copy.deepcopy(ekf.x_errado)
             atual_loc_odom = [ekf_odom_x[0,0], ekf_odom_x[1,0], 0]
@@ -175,6 +180,7 @@ class Plane:
             inlier_move_odom = np.dot(self.inliers, rotMatrix_odom.T) + tranlation_odom
             self.bucket_odom.points = o3d.utility.Vector3dVector(np.asarray(inlier_move_odom))
 
+            self.t__bucket_debug = timer() - t__start
         
         self.points_main = np.dot(self.points_main, rotMatrix.T)
         #print('points_main antes: ', self.points_main)
@@ -287,12 +293,18 @@ class Plane:
 
         # Add points to point bucket
         if self.store_point_bucket:
+            t__start = timer()
             self.bucket_pos.points = o3d.utility.Vector3dVector(np.append(self.bucket_pos.points, plano.feat.inliers, axis=0))
+            self.t__bucket_debug = timer() - t__start
 
-            corrected_points =aux.projected_point_into_plane(np.append(self.bucket_pos.points, plano.feat.inliers, axis=0), self.equation)
+            t__start = timer()
+            corrected_points = aux.projected_point_into_plane(np.append(self.bucket_pos.points, plano.feat.inliers, axis=0), self.equation)
             self.bucket.points = o3d.utility.Vector3dVector(corrected_points)
+            self.t__bucket = timer() - t__start
 
+            t__start = timer()
             self.bucket_odom.points = o3d.utility.Vector3dVector(np.append(self.bucket_odom.points, plano.feat.bucket_odom.points, axis=0))
+            self.t__bucket_debug = timer() - t__start + self.t__bucket_debug
 
         if(usa_media):
             eqplano2 = plano.feat.equation
